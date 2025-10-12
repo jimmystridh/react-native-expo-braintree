@@ -4,10 +4,27 @@ import {
   withExpoBraintreeAppDelegate,
   withExpoBraintreePlist,
   withSwiftBraintreeWrapperFile,
+  withApplePayMerchantIds,
   withVenmoScheme,
 } from './withExpoBraintree.ios';
 
-const pkg = require('react-native-expo-braintree/package.json');
+const path = require('path');
+
+const fallbackPackagePath = path.join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  'package.json'
+);
+
+const pkg = (() => {
+  try {
+    return require('react-native-expo-braintree/package.json');
+  } catch (error) {
+    return require(fallbackPackagePath);
+  }
+})();
 
 export type ExpoBraintreePluginProps = {
   /**
@@ -24,6 +41,11 @@ export type ExpoBraintreePluginProps = {
    * Android AppLink pathPrefix
    */
   pathPrefix?: string;
+
+  /**
+   * Optional Apple Pay merchant identifier added to entitlements
+   */
+  applePayMerchantIdentifier?: string;
 };
 
 export const withExpoBraintreePlugin: ConfigPlugin<ExpoBraintreePluginProps> = (
@@ -37,6 +59,7 @@ export const withExpoBraintreePlugin: ConfigPlugin<ExpoBraintreePluginProps> = (
   config = withExpoBraintreeAppDelegate(config, props);
   config = withExpoBraintreePlist(config);
   config = withVenmoScheme(config);
+  config = withApplePayMerchantIds(config, props);
 
   return config;
 };

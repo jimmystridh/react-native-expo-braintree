@@ -50,3 +50,26 @@ func prepareBTVenmoAccountNonceResult(accountNonce: BTVenmoAccountNonce)
   result["shippingAddress"] = prepareAddressResult(address: accountNonce.shippingAddress)
   return result
 }
+
+func prepareBTApplePayNonceResult(cardNonce: BTApplePayCardNonce) -> NSDictionary {
+  let result = NSMutableDictionary()
+  result["nonce"] = cardNonce.nonce
+  result["type"] = cardNonce.type
+  result["isDefault"] = cardNonce.isDefault
+  result["isDeviceToken"] = cardNonce.isDeviceToken
+
+  let binData = NSMutableDictionary()
+  binData["prepaid"] = cardNonce.binData.prepaid
+  binData["healthcare"] = cardNonce.binData.healthcare
+  binData["debit"] = cardNonce.binData.debit
+  binData["durbinRegulated"] = cardNonce.binData.durbinRegulated
+  binData["commercial"] = cardNonce.binData.commercial
+  binData["payroll"] = cardNonce.binData.payroll
+  binData["issuingBank"] = cardNonce.binData.issuingBank
+  binData["countryOfIssuance"] = cardNonce.binData.countryOfIssuance
+  binData["productID"] = cardNonce.binData.productID
+
+  result["binData"] = binData
+
+  return result
+}

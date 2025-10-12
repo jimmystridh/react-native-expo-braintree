@@ -1,5 +1,7 @@
 import { NativeModules, Platform } from 'react-native';
 import type {
+  BTApplePayError,
+  BTApplePayNonceResult,
   BTCardTokenizationNonceResult,
   BTPayPalAccountNonceResult,
   BTPayPalError,
@@ -7,6 +9,7 @@ import type {
   BTVenmoError,
   BTVenmoNonceResult,
   RequestBillingAgreementOptions,
+  RequestApplePayNonceOptions,
   RequestOneTimePaymentOptions,
   RequestVenmoNonceOptions,
   TokenizeCardOptions,
@@ -92,6 +95,18 @@ export async function requestVenmoNonce(
     return result;
   } catch (ex: unknown) {
     return ex as BTVenmoError;
+  }
+}
+
+export async function requestApplePayNonce(
+  options: RequestApplePayNonceOptions
+): Promise<BTApplePayNonceResult | BTApplePayError> {
+  try {
+    const result: BTApplePayNonceResult =
+      await ExpoBraintree.requestApplePayNonce(options);
+    return result;
+  } catch (ex: unknown) {
+    return ex as BTApplePayError;
   }
 }
 

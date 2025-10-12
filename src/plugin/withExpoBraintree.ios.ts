@@ -3,6 +3,7 @@ import {
   IOSConfig,
   withAppDelegate,
   withInfoPlist,
+  withEntitlementsPlist,
   type ConfigPlugin,
 } from '@expo/config-plugins';
 import eol from 'eol';
@@ -13,6 +14,11 @@ export const withExpoBraintreeAppDelegate: ConfigPlugin<
 > = (expoConfig, { xCodeProjectAppName }) => {
   return withAppDelegate(expoConfig, (config) => {
     const appDelegate = config.modResults;
+    if (appDelegate.language === 'swift') {
+      config.modResults.contents = modifySwiftAppDelegate(appDelegate.contents);
+      return config;
+    }
+
     let contents = eol.split(appDelegate.contents);
     // Step 1 Edit Import part
     // Editing import part for -swift.h file to be able to use Braintree
@@ -80,6 +86,66 @@ export const withExpoBraintreeAppDelegate: ConfigPlugin<
     return config;
   });
 };
+
+function modifySwiftAppDelegate(appDelegateContents: string): string {
+  const lines = eol.split(appDelegateContents);
+  const updatedLines: string[] = [];
+  const importsToOmit = new Set([
+    '#import "ExpoModulesCore-Swift.h"',
+    '#import "ExpoBraintree-Swift.h"',
+  ]);
+
+  const configureCall = 'BraintreeExpoConfig.configure()';
+  let didInsertConfigure = appDelegateContents.includes(configureCall);
+  let didInsertHandle = appDelegateContents.includes(
+    'BraintreeExpoConfig.handleUrl'
+  );
+  let awaitingConfigureBody = false;
+  let awaitingHandleBody = false;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? '';
+    if (importsToOmit.has(line.trim())) {
+      continue;
+    }
+    if (line.includes('[BraintreeExpoConfig configure];')) {
+      updatedLines.push('    BraintreeExpoConfig.configure()');
+      didInsertConfigure = true;
+      continue;
+    }
+    if (!didInsertConfigure && line.includes('didFinishLaunchingWithOptions')) {
+      awaitingConfigureBody = true;
+    }
+
+    if (!didInsertHandle && line.includes('open url: URL')) {
+      awaitingHandleBody = true;
+    }
+
+    updatedLines.push(line);
+
+    if (awaitingConfigureBody && line.includes(') -> Bool {')) {
+      const indentation = line.match(/^(\s*)/)?.[1] ?? '';
+      const bodyIndentation = `${indentation}  `;
+      updatedLines.push(`${bodyIndentation}${configureCall}`);
+      didInsertConfigure = true;
+      awaitingConfigureBody = false;
+    }
+
+    if (awaitingHandleBody && line.includes(') -> Bool {')) {
+      const indentation = line.match(/^(\s*)/)?.[1] ?? '';
+      const bodyIndentation = `${indentation}  `;
+      updatedLines.push(
+        `${bodyIndentation}if BraintreeExpoConfig.handleUrl(url: url) {`
+      );
+      updatedLines.push(`${bodyIndentation}  return true`);
+      updatedLines.push(`${bodyIndentation}}`);
+      didInsertHandle = true;
+      awaitingHandleBody = false;
+    }
+  }
+
+  return updatedLines.join('\n');
+}
 
 /**
  * Add a new wrapper Swift file to the Xcode project for Swift compatibility.
@@ -158,6 +224,28 @@ export const withVenmoScheme: ConfigPlugin = (expoConfig) => {
       config.modResults.LSApplicationQueriesSchemes.push(venmoScheme);
     }
 
+    return config;
+  });
+};
+
+export const withApplePayMerchantIds: ConfigPlugin<ExpoBraintreePluginProps> = (
+  expoConfig,
+  { applePayMerchantIdentifier }
+) => {
+  return withEntitlementsPlist(expoConfig, (config) => {
+    if (!applePayMerchantIdentifier) {
+      return config;
+    }
+
+    const entitlementKey = 'com.apple.developer.in-app-payments';
+    const existingValue = config.modResults[entitlementKey];
+    const merchantIds = Array.isArray(existingValue) ? [...existingValue] : [];
+
+    if (!merchantIds.includes(applePayMerchantIdentifier)) {
+      merchantIds.push(applePayMerchantIdentifier);
+    }
+
+    config.modResults[entitlementKey] = merchantIds;
     return config;
   });
 };

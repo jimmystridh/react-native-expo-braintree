@@ -18,6 +18,11 @@ export enum ERROR_TYPES {
   USER_CANCEL_TRANSACTION_ERROR = 'USER_CANCEL_TRANSACTION_ERROR',
   DATA_COLLECTOR_ERROR = 'DATA_COLLECTOR_ERROR',
   CARD_TOKENIZATION_ERROR = 'CARD_TOKENIZATION_ERROR',
+  APPLE_PAY_NOT_AVAILABLE_ERROR = 'APPLE_PAY_NOT_AVAILABLE_ERROR',
+  APPLE_PAY_CONFIGURATION_ERROR = 'APPLE_PAY_CONFIGURATION_ERROR',
+  APPLE_PAY_PRESENTATION_ERROR = 'APPLE_PAY_PRESENTATION_ERROR',
+  APPLE_PAY_TOKENIZATION_ERROR = 'APPLE_PAY_TOKENIZATION_ERROR',
+  APPLE_PAY_USER_CANCELLATION_ERROR = 'APPLE_PAY_USER_CANCELLATION_ERROR',
 }
 
 export enum PAYPAL_ERROR_TYPES {
@@ -47,6 +52,76 @@ export enum BTVenmoPaymntMethodUsage {
   multiUse = 'multiUse',
   singleUse = 'singleUse',
 }
+
+export type BTApplePayMerchantCapability = '3ds' | 'credit' | 'debit' | 'emv';
+
+export type BTApplePaySupportedNetwork =
+  | 'amex'
+  | 'cartesBancaires'
+  | 'chinaUnionPay'
+  | 'discover'
+  | 'eftpos'
+  | 'electron'
+  | 'elo'
+  | 'idCredit'
+  | 'interac'
+  | 'jcb'
+  | 'mada'
+  | 'maestro'
+  | 'masterCard'
+  | 'privateLabel'
+  | 'quicPay'
+  | 'suica'
+  | 'visa';
+
+export type BTApplePayContactField =
+  | 'email'
+  | 'name'
+  | 'phone'
+  | 'postalAddress'
+  | 'phoneticName';
+
+export type BTApplePaySummaryItemType = 'final' | 'pending';
+
+export type BTApplePayShippingType =
+  | 'shipping'
+  | 'delivery'
+  | 'storePickup'
+  | 'servicePickup';
+
+export type BTApplePaySummaryItem = {
+  label: string;
+  amount: string;
+  type?: BTApplePaySummaryItemType;
+};
+
+export type BTApplePayShippingMethod = BTApplePaySummaryItem & {
+  identifier: string;
+  detail?: string;
+};
+
+export type BTApplePayPostalAddress = {
+  street?: string;
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  countryCode?: string;
+  subAdministrativeArea?: string;
+  subLocality?: string;
+};
+
+export type BTApplePayContact = {
+  emailAddress?: string;
+  phoneNumber?: string;
+  givenName?: string;
+  familyName?: string;
+  phoneticGivenName?: string;
+  phoneticFamilyName?: string;
+  postalAddress?: BTApplePayPostalAddress;
+};
 
 export type RequestBillingAgreementOptions = {
   clientToken: string;
@@ -82,6 +157,23 @@ export type TokenizeCardOptions = {
   clientToken: string;
 };
 
+export type RequestApplePayNonceOptions = {
+  clientToken: string;
+  merchantIdentifier: string;
+  countryCode: string;
+  currencyCode: string;
+  supportedNetworks: BTApplePaySupportedNetwork[];
+  paymentSummaryItems: BTApplePaySummaryItem[];
+  merchantCapabilities?: BTApplePayMerchantCapability[];
+  requiredBillingContactFields?: BTApplePayContactField[];
+  requiredShippingContactFields?: BTApplePayContactField[];
+  shippingMethods?: BTApplePayShippingMethod[];
+  billingContact?: BTApplePayContact;
+  shippingContact?: BTApplePayContact;
+  shippingType?: BTApplePayShippingType;
+  applicationData?: string;
+};
+
 export type BTPayPalAccountNonceAddressResult = {
   recipientName?: string;
   streetAddress?: string;
@@ -109,6 +201,26 @@ export type BTCardTokenizationNonceResult = {
   lastFour?: string;
   expirationMonth?: string;
   expirationYear?: string;
+};
+
+export type BTApplePayBinDataResult = {
+  prepaid?: string;
+  healthcare?: string;
+  debit?: string;
+  durbinRegulated?: string;
+  commercial?: string;
+  payroll?: string;
+  issuingBank?: string;
+  countryOfIssuance?: string;
+  productID?: string;
+};
+
+export type BTApplePayNonceResult = {
+  nonce: string;
+  type?: string;
+  isDefault?: boolean;
+  isDeviceToken?: boolean;
+  binData?: BTApplePayBinDataResult;
 };
 
 export type RequestVenmoNonceOptions = {
@@ -152,4 +264,10 @@ export type BTVenmoError = {
   code?: EXCEPTION_TYPES | VENMO_EXCEPTION_TYPES;
   message?: ERROR_TYPES | VENMO_ERROR_TYPES | string;
   domain?: ERROR_TYPES | VENMO_ERROR_TYPES;
+};
+
+export type BTApplePayError = {
+  code?: EXCEPTION_TYPES | string;
+  message?: ERROR_TYPES | string;
+  domain?: ERROR_TYPES | string;
 };

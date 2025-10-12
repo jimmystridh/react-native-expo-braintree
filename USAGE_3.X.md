@@ -67,3 +67,25 @@ const nonce = await requestVenmoNonce({
     totalAmount: '5',
 });
 ```
+
+## Request Apple Pay nonce
+```javascript
+import {
+  requestApplePayNonce,
+} from "expo-braintree";
+
+const nonce = await requestApplePayNonce({
+    clientToken,
+    merchantIdentifier: 'merchant.com.example',
+    countryCode: 'US',
+    currencyCode: 'USD',
+    supportedNetworks: ['visa', 'masterCard', 'amex'],
+    paymentSummaryItems: [
+      { label: 'Example Item', amount: '4.00' },
+      { label: 'Example Tax', amount: '1.00' },
+      { label: 'Example Total', amount: '5.00' },
+    ],
+});
+```
+
+> Apple Pay sheets only present on a real iOS device with Apple Pay configured; the iOS simulator will return an `APPLE_PAY_NOT_AVAILABLE_ERROR`.

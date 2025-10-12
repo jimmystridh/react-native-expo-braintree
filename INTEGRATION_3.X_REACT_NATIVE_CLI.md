@@ -116,3 +116,41 @@ import Foundation
 
 ```
 The same steps are already implemented into example app, if you have any issues please check it.
+
+#### Apple Pay Setup
+
+To use `requestApplePayNonce` in a bare workflow you must configure Apple Pay manually:
+
+1. **Create a Merchant ID** – In the Apple Developer portal register a merchant identifier such as `merchant.com.myapp.payments` and enable Apple Pay for your App ID.
+2. **Update entitlements** – Add the merchant ID to your app’s entitlements (`ios/{AppName}/{AppName}.entitlements`):
+
+   ```xml
+   <key>com.apple.developer.in-app-payments</key>
+   <array>
+     <string>merchant.com.myapp.payments</string>
+   </array>
+   ```
+
+3. **Sync capabilities in Xcode** – In the “Signing & Capabilities” tab ensure “Apple Pay” is checked and the merchant ID you created is selected.
+4. **Reinstall pods** – Run `npx pod-install` so the `Braintree/ApplePay` subspec is available (already declared in the podspec included with this library).
+5. **Use the JS helper** – With entitlements in place you can call:
+
+   ```ts
+   import { requestApplePayNonce } from 'react-native-expo-braintree';
+
+   const nonce = await requestApplePayNonce({
+     clientToken,
+     merchantIdentifier: 'merchant.com.myapp.payments',
+     countryCode: 'US',
+     currencyCode: 'USD',
+     supportedNetworks: ['visa', 'masterCard'],
+     paymentSummaryItems: [
+       { label: 'Example Item', amount: '10.00' },
+       { label: 'Total', amount: '10.00' },
+     ],
+   });
+   ```
+
+   The method returns a nonce on success or an error describing what failed.
+
+6. **Test on a real device** – The iOS simulator does not present the Apple Pay sheet, so use a physical iPhone with Apple Pay configured to verify the flow end-to-end.

@@ -89,8 +89,7 @@ You can find it in [Example App](example/src/App.tsx) or in dedicated, usage pag
 - To iacop0 https://github.com/iacop0 - For introducing Venmo Integration And Android Version Bump 
 
 ## TODO
-- [ ] Add ApplePay,
+- [x] Add ApplePay,
 - [ ] Google Pay, 
 - [ ] 3D-Secure (In Progress)
 - [x] Venmo
-
