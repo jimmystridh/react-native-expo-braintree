@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches:
+      - main
       - '**'
   pull_request:
     types:
@@ -10,6 +11,7 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  workflow_dispatch:
 
 permissions:
   contents: read
