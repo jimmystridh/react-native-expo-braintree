@@ -11,7 +11,16 @@ import {
   withBraintreeWrapperFile,
 } from './withExpoBraintree.ios';
 
-const pkg = require('react-native-expo-braintree/package.json');
+const path = require('path');
+
+// Self-resolution fails when the plugin runs from a local checkout or a symlinked install
+const pkg = (() => {
+  try {
+    return require('react-native-expo-braintree/package.json');
+  } catch {
+    return require(path.join(__dirname, '..', '..', '..', 'package.json'));
+  }
+})();
 
 export type ExpoBraintreePluginProps = {
   /**
