@@ -35,7 +35,8 @@
           "initialize3DSecure": "true",
           "initializeGooglePay": "true",
           "initializeVenmo": "true",
-          "addFallbackUrlScheme": "true"
+          "addFallbackUrlScheme": "true",
+          "applePayMerchantIdentifier": "merchant.com.example"
         }
       ]
     ]

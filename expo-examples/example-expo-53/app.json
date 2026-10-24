@@ -34,7 +34,8 @@
           "host": "braintree-example-app.web.app",
           "initialize3DSecure": "true",
           "initializeGooglePay": "true",
-          "addFallbackUrlScheme": "true"
+          "addFallbackUrlScheme": "true",
+          "applePayMerchantIdentifier": "merchant.com.example"
         }
       ]
     ]

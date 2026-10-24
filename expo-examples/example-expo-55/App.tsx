@@ -17,6 +17,7 @@ import {
   tokenizeCardData,
   request3DSecurePaymentCheck,
   requestGooglePayPayment,
+  requestApplePayPayment,
   requestVenmoNonce,
   GOOGLE_PAY_TOTAL_PRICE_STATUS,
   BTPayPalCheckoutIntent,
@@ -28,6 +29,7 @@ import { LogView, type LogState } from './LogView';
 
 const merchantAppLink = 'https://braintree-example-app.web.app';
 const clientToken = 'sandbox_krwbdqfy_b3fgzq5txkj3j5s6';
+const applePayMerchantIdentifier = 'merchant.com.example';
 
 const T3DS_SCENARIOS = [
   { label: '✅ 3DS Success (No Challenge)', number: '4000000000002701' },
@@ -53,6 +55,11 @@ export default function App() {
     error: null,
   });
   const [logGP, setLogGP] = React.useState<LogState>({
+    loading: false,
+    result: null,
+    error: null,
+  });
+  const [logAP, setLogAP] = React.useState<LogState>({
     loading: false,
     result: null,
     error: null,
@@ -358,6 +365,45 @@ export default function App() {
               />
             </View>
           )}
+
+          {/* SECTION 6: APPLE PAY */}
+          {Platform.OS === 'ios' && (
+            <View style={[styles.section]}>
+              <Text style={styles.sectionTitle}>6. Apple Pay</Text>
+              <Text style={styles.label}>
+                Needs a real device with a card in Wallet and Apple Pay enabled
+                for this merchant ID in the Braintree gateway.
+              </Text>
+              <TouchableOpacity
+                style={styles.buttonApplePay}
+                onPress={() =>
+                  exec(setLogAP, 'ApplePay', () =>
+                    requestApplePayPayment({
+                      clientToken,
+                      merchantIdentifier: applePayMerchantIdentifier,
+                      countryCode: 'US',
+                      currencyCode: 'USD',
+                      supportedNetworks: ['visa', 'masterCard', 'amex'],
+                      requiredBillingContactFields: ['postalAddress'],
+                      paymentSummaryItems: [
+                        { label: 'Example Item', amount: '4.00' },
+                        { label: 'Example Tax', amount: '1.00' },
+                        { label: 'Example Inc.', amount: '5.00' },
+                      ],
+                    })
+                  )
+                }
+              >
+                <Text style={styles.buttonText}>Pay with Apple Pay</Text>
+              </TouchableOpacity>
+              <LogView
+                state={logAP}
+                onClear={() =>
+                  setLogAP({ loading: false, result: null, error: null })
+                }
+              />
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -445,5 +491,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#555',
+  },
+  buttonApplePay: {
+    padding: 12,
+    backgroundColor: '#000',
+    borderRadius: 6,
+    alignItems: 'center',
   },
 });
