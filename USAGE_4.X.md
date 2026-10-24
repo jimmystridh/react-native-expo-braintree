@@ -11,6 +11,7 @@ import {
   requestVenmoNonce,
   request3DSecurePaymentCheck,
   requestGooglePayPayment,
+  requestApplePayPayment,
 } from 'react-native-expo-braintree';
 ```
 
@@ -144,6 +145,35 @@ Implementation inside [requestGooglePayPayment](src/index.tsx).
 
 ---
 
+## Apple Pay (iOS only)
+
+```typescript
+const result = await requestApplePayPayment({
+  clientToken: 'YOUR_CLIENT_TOKEN',
+  merchantIdentifier: 'merchant.com.example', // Optional, defaults to the Braintree gateway configuration
+  countryCode: 'US',                          // Optional, defaults to the Braintree gateway configuration
+  currencyCode: 'USD',                        // Optional, defaults to the Braintree gateway configuration
+  supportedNetworks: ['visa', 'masterCard'],  // Optional, defaults to the Braintree gateway configuration
+  requiredBillingContactFields: ['postalAddress'],
+  paymentSummaryItems: [
+    { label: 'Example Item', amount: '4.00' },
+    { label: 'Example Tax', amount: '1.00' },
+    { label: 'Example Inc.', amount: '5.00' }, // Apple expects the last item to be the total
+  ],
+});
+
+if ('nonce' in result) {
+  // result.cardNetwork, result.binData, result.isDeviceToken are also available
+}
+```
+Implementation inside [requestApplePayPayment](src/index.tsx).
+
+The Apple Pay sheet only appears on a real device with a card in Wallet. On the simulator, or when no card matches `supportedNetworks`, the method returns `APPLE_PAY_NOT_AVAILABLE_ERROR`. If the user closes the sheet it returns `APPLE_PAY_USER_CANCELLATION_ERROR`. A failed tokenization keeps the sheet open so the user can pick another card, and is reported as `APPLE_PAY_TOKENIZATION_ERROR` only if the sheet is closed without a successful payment.
+
+See [INTEGRATION_4.X_EXPO.md](INTEGRATION_4.X_EXPO.md#apple-pay) or [INTEGRATION_4.X_REACT_NATIVE_CLI.md](INTEGRATION_4.X_REACT_NATIVE_CLI.md#5-apple-pay-optional) for the required merchant ID setup.
+
+---
+
 ## Error Handling
 
 All methods return a result on success or throw an error object with the following structure:
@@ -176,6 +206,8 @@ import type {
   BTVenmoError,
   BTGooglePayNonceResult,
   BTGooglePayError,
+  BTApplePayNonceResult,
+  BTApplePayError,
   BTDataCollectorError,
   ThreeDSecureCheckOptions,
   RequestOneTimePaymentOptions,
@@ -183,6 +215,7 @@ import type {
   TokenizeCardOptions,
   RequestVenmoNonceOptions,
   RequestGooglePayOptions,
+  RequestApplePayOptions,
 } from 'react-native-expo-braintree';
 ```
 
@@ -197,5 +230,6 @@ import {
   BoolValue,
   BTVenmoPaymntMethodUsage,
   GOOGLE_PAY_TOTAL_PRICE_STATUS,
+  APPLE_PAY_ERROR_TYPES,
 } from 'react-native-expo-braintree';
 ```

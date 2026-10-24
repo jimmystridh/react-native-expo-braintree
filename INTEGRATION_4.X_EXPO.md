@@ -24,6 +24,7 @@ plugins: [
       initializeGooglePay: "true",        // Optional, if you use Google Pay
       initializeVenmo: "true",            // Optional, if you use Venmo
       addFallbackUrlScheme: "true",       // Optional, needed for Android Venmo/3DSecure fallback
+      applePayMerchantIdentifier: "merchant.com.example", // Optional, if you use Apple Pay
     },
   ],
 ];
@@ -39,6 +40,7 @@ plugins: [
 | `initializeGooglePay` | Whether to initialize Google Pay launcher (`"true"` / `"false"`) |
 | `initializeVenmo` | Whether to initialize Venmo context switching on iOS (`"true"` / `"false"`) |
 | `addFallbackUrlScheme` | Whether to add a fallback URL scheme for Android Venmo (`"true"` / `"false"`) |
+| `applePayMerchantIdentifier` | Apple Pay merchant ID added to the iOS `com.apple.developer.in-app-payments` entitlement (Optional) |
 
 ### Android Specific
 
@@ -48,5 +50,13 @@ It also injects `initGooglePay()` and `initThreeDSecure()` calls into `MainActiv
 ### iOS Specific
 
 If `initializeVenmo` is set to `"true"`, the plugin automatically modifies `AppDelegate.swift` to handle URL callbacks for Venmo, configures `Info.plist` schemes, and registers `ExpoBraintreeConfig.swift`. No manual code modifications or Xcode configurations are required.
+
+### Apple Pay
+
+1. Register a merchant ID (for example `merchant.com.myapp`) in the Apple Developer portal and enable Apple Pay for your App ID.
+2. Enable Apple Pay for that merchant ID in the Braintree Control Panel. This is where you create the Apple Pay Payment Processing Certificate.
+3. Set `applePayMerchantIdentifier` in the plugin options. The plugin adds the merchant ID to your entitlements. Apple Pay does not need any `AppDelegate` changes.
+4. Run `npx expo prebuild` and rebuild the iOS app so Xcode picks up the new entitlement.
+5. Test on a real device with a card in Wallet. The simulator cannot present the Apple Pay sheet.
 
 [withExpoBraintree.android.ts](src/plugin/withExpoBraintree.android.ts)

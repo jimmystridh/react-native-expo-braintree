@@ -33,7 +33,7 @@ A high-performance, native implementation of the [Braintree SDK](https://develop
 ## Key Features
 
 - **Nitro Modules Architecture**: Uses direct JSI bindings bypassing the legacy React Native bridge for zero-serialization overhead and near-instantaneous call execution.
-- **Full Payment Method Coverage**: Support for 7 Braintree payment types.
+- **Full Payment Method Coverage**: Support for 8 Braintree payment types.
 - **Expo Config Plugin**: Out-of-the-box support for Expo SDK 53, 54, and 55 with minimal configuration.
 
 ### Supported Payment Methods
@@ -46,6 +46,7 @@ A high-performance, native implementation of the [Braintree SDK](https://develop
 | **3D Secure**                |                           ✅                            |                           ✅                            | Bank risk check verification                    |
 | **Venmo**                    | Partially Supported (might be some web switch problems) | Partially Supported (might be some web switch problems) | Venmo App / Web authentication switch           |
 | **Google Pay**               |                           ✅                            |                           N/A                           | Google Pay sheets integration                   |
+| **Apple Pay**                |                           N/A                           |                           ✅                            | Apple Pay sheet integration                     |
 | **Data Collector**           |                           ✅                            |                           ✅                            | Advanced fraud tracking / device data profiling |
 
 ---
@@ -182,7 +183,7 @@ If you continue to experience issues after verifying the App Link state and the 
 - [x] Venmo Integration
 - [x] 3D-Secure
 - [x] Google Pay
-- [ ] Apple Pay (TBD)
+- [x] Apple Pay
 
 ---
 

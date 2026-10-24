@@ -214,6 +214,26 @@ func application(
 
 ---
 
+# 5. Apple Pay (optional)
+
+1. Register a merchant ID (for example `merchant.com.myapp`) in the Apple Developer portal and enable Apple Pay for your App ID.
+2. Enable Apple Pay for that merchant ID in the Braintree Control Panel. This is where you create the Apple Pay Payment Processing Certificate.
+3. In Xcode, open **Signing & Capabilities**, add the **Apple Pay** capability and select your merchant ID. This writes the entitlement:
+
+```xml
+<key>com.apple.developer.in-app-payments</key>
+<array>
+  <string>merchant.com.myapp</string>
+</array>
+```
+
+4. Run `pod install`. The `Braintree/ApplePay` pod is already declared by this library.
+5. Test on a real device with a card in Wallet. The simulator cannot present the Apple Pay sheet.
+
+Apple Pay does not need any `AppDelegate` or URL scheme changes.
+
+---
+
 # Example Projects
 
 All required Android and iOS configuration examples can be found in the example project directories:
@@ -234,4 +254,5 @@ To integrate **react-native-expo-braintree v4.0.0** in a React Native Bare proje
 5. Configure **iOS URL Scheme**
 6. Create **ExpoBraintreeConfig.swift**
 7. Update **AppDelegate.swift** with `application(_:open:options:)`
-8. Run `pod install`
+8. Add the **Apple Pay** capability and merchant ID (optional)
+9. Run `pod install`
