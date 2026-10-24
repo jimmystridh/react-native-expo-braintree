@@ -25,4 +25,7 @@ export interface ExpoBraintree extends HybridObject<{
   requestGooglePayPayment(
     options: Record<string, string>
   ): Promise<Record<string, string>>;
+  requestApplePayPayment(
+    options: Record<string, string>
+  ): Promise<Record<string, string>>;
 }

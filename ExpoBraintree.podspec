@@ -26,6 +26,7 @@ Pod::Spec.new do |s|
   s.dependency "Braintree/PayPal", "7.5.0"
   s.dependency "Braintree/Venmo", "7.5.0"
   s.dependency "Braintree/DataCollector", "7.5.0"
+  s.dependency "Braintree/ApplePay", "7.5.0"
 
   s.dependency 'React-jsi'
   s.dependency 'React-callinvoker'

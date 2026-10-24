@@ -1,6 +1,7 @@
 import Braintree
 import Foundation
 import NitroModules
+import PassKit
 
 extension NSDictionary {
     func toSwiftDict() -> Dictionary<String, String> {
@@ -22,6 +23,7 @@ extension NSDictionary {
 
 class ExpoBraintree: HybridExpoBraintreeSpec {
     var threeDSecureClient: BTThreeDSecureClient? = nil
+    var applePaySession: ApplePayPaymentSession? = nil
 
     func requestBillingAgreement(options: Dictionary<String, String>) throws -> Promise<Dictionary<String, String>> {
         let promise = Promise<Dictionary<String, String>>()
@@ -138,6 +140,38 @@ class ExpoBraintree: HybridExpoBraintreeSpec {
 
     func requestGooglePayPayment(options: Dictionary<String, String>) throws -> Promise<Dictionary<String, String>> {
         return Promise.resolved(withResult: ["error": "true", "code": EXCEPTION_TYPES.SWIFT_EXCEPTION.rawValue, "message": ERROR_TYPES.TOKENIZE_VAULT_PAYMENT_ERROR.rawValue, "domain": ERROR_TYPES.TOKENIZE_VAULT_PAYMENT_ERROR.rawValue, "nativeError": "Google Pay is not supported on iOS"])
+    }
+
+    func requestApplePayPayment(options: Dictionary<String, String>) throws -> Promise<Dictionary<String, String>> {
+        let clientToken = options["clientToken"] ?? ""
+        if clientToken.isEmpty {
+            return Promise.resolved(withResult: applePayErrorResult(.API_CLIENT_INITIALIZATION_ERROR, nativeError: "Missing clientToken"))
+        }
+        guard PKPaymentAuthorizationController.canMakePayments() else {
+            return Promise.resolved(withResult: applePayErrorResult(.APPLE_PAY_NOT_AVAILABLE_ERROR, nativeError: "This device cannot make Apple Pay payments"))
+        }
+        let requestOptions: ApplePayRequestOptions
+        do {
+            requestOptions = try prepareApplePayRequestOptions(options: options)
+        } catch {
+            return Promise.resolved(withResult: applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: error.localizedDescription))
+        }
+        let promise = Promise<Dictionary<String, String>>()
+        DispatchQueue.main.async { [self] in
+            guard self.applePaySession == nil else {
+                promise.resolve(withResult: applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: "Another Apple Pay request is already in progress"))
+                return
+            }
+            let session = ApplePayPaymentSession(
+                clientToken: clientToken,
+                requestOptions: requestOptions,
+                promise: promise,
+                onFinish: { [weak self] in self?.applePaySession = nil }
+            )
+            self.applePaySession = session
+            session.start()
+        }
+        return promise
     }
 
 }

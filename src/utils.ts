@@ -17,6 +17,16 @@ export const parseKnownFields = (
   return out;
 };
 
+export const toNativeOptions = (options: object): Record<string, string> => {
+  const nativeOptions: Record<string, string> = {};
+  for (const [key, value] of Object.entries(options)) {
+    if (value === undefined || value === null) continue;
+    nativeOptions[key] =
+      typeof value === 'string' ? value : JSON.stringify(value);
+  }
+  return nativeOptions;
+};
+
 export const handleResult = <T>(
   result: unknown,
   nestedFields?: string[]

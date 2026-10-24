@@ -4,6 +4,7 @@ import {
   withExpoBraintreeAndroidGradle,
 } from './withExpoBraintree.android';
 import {
+  withApplePayMerchantId,
   withExpoBraintreePlist,
   withVenmoScheme,
   withExpoBraintreeAppDelegate,
@@ -53,6 +54,11 @@ export type ExpoBraintreePluginProps = {
    * ExpoBraintreeConfig.swift wrapper, and AppDelegate URL handler.
    */
   initializeVenmo?: 'true' | 'false';
+  /**
+   * Apple Pay merchant ID (e.g. merchant.com.example) added to the
+   * com.apple.developer.in-app-payments entitlement
+   */
+  applePayMerchantIdentifier?: string;
 };
 
 export const withExpoBraintreePlugin: ConfigPlugin<ExpoBraintreePluginProps> = (
@@ -78,6 +84,10 @@ export const withExpoBraintreePlugin: ConfigPlugin<ExpoBraintreePluginProps> = (
 
   if (props?.initializeVenmo === 'true') {
     config = withVenmoScheme(config);
+  }
+
+  if (props?.applePayMerchantIdentifier) {
+    config = withApplePayMerchantId(config, props.applePayMerchantIdentifier);
   }
 
   return config;

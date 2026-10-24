@@ -20,9 +20,16 @@ import type {
   BTGooglePayNonceResult,
   BTGooglePayError,
   BTDataCollectorError,
+  RequestApplePayOptions,
+  BTApplePayNonceResult,
+  BTApplePayError,
 } from './types';
-import { GOOGLE_PAY_TOTAL_PRICE_STATUS } from './types';
-import { catchError, handleResult } from './utils';
+import {
+  APPLE_PAY_ERROR_TYPES,
+  EXCEPTION_TYPES,
+  GOOGLE_PAY_TOTAL_PRICE_STATUS,
+} from './types';
+import { catchError, handleResult, toNativeOptions } from './utils';
 
 const ExpoBraintreeHybridObject =
   NitroModules.createHybridObject<ExpoBraintree>('ExpoBraintree');
@@ -164,6 +171,32 @@ export const requestGooglePayPayment = async (
     ]);
   } catch (ex: unknown) {
     return catchError(ex) as BTGooglePayError;
+  }
+};
+
+export const requestApplePayPayment = async (
+  options: RequestApplePayOptions
+): Promise<BTApplePayNonceResult | BTApplePayError> => {
+  try {
+    if (Platform.OS !== 'ios') {
+      return {
+        error: 'true',
+        code: EXCEPTION_TYPES.KOTLIN_EXCEPTION,
+        message: APPLE_PAY_ERROR_TYPES.APPLE_PAY_NOT_AVAILABLE_ERROR,
+        domain: APPLE_PAY_ERROR_TYPES.APPLE_PAY_NOT_AVAILABLE_ERROR,
+        nativeError: 'Apple Pay is only supported on iOS.',
+      };
+    }
+    const result = await ExpoBraintreeHybridObject.requestApplePayPayment(
+      toNativeOptions(options)
+    );
+    return handleResult<BTApplePayNonceResult>(result, [
+      'isDefault',
+      'isDeviceToken',
+      'binData',
+    ]);
+  } catch (ex: unknown) {
+    return catchError(ex) as BTApplePayError;
   }
 };
 

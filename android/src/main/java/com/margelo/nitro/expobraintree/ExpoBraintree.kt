@@ -24,6 +24,7 @@ import com.margelo.nitro.expobraintree.converters.PayPalDataConverter
 import com.margelo.nitro.expobraintree.converters.SharedDataConverter
 import com.margelo.nitro.expobraintree.converters.SharedDataConverter.Companion.createDataCollectorRequest
 import com.margelo.nitro.expobraintree.converters.VenmoDataConverter
+import com.margelo.nitro.expobraintree.enums.APPLE_PAY_ERROR_TYPES
 import com.margelo.nitro.expobraintree.enums.EXCEPTION_TYPES
 import com.margelo.nitro.expobraintree.enums.ERROR_TYPES
 import com.margelo.nitro.expobraintree.enums.GOOGLE_PAY_ERROR_TYPES
@@ -472,6 +473,12 @@ class ExpoBraintree : HybridExpoBraintreeSpec() {
       moduleHandlers.resolveError(EXCEPTION_TYPES.KOTLIN_EXCEPTION.value, ERROR_TYPES.TOKENIZE_VAULT_PAYMENT_ERROR.value, ex.message, promise)
       clearInstanceReferences()
     }
+    return promise
+  }
+
+  override fun requestApplePayPayment(options: Map<String, String>): Promise<Map<String, String>> {
+    val promise = Promise<Map<String, String>>()
+    moduleHandlers.resolveError(EXCEPTION_TYPES.KOTLIN_EXCEPTION.value, APPLE_PAY_ERROR_TYPES.APPLE_PAY_NOT_AVAILABLE_ERROR.value, "Apple Pay is not supported on Android", promise)
     return promise
   }
 

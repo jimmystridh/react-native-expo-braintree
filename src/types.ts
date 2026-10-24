@@ -1,5 +1,6 @@
 export enum EXCEPTION_TYPES {
   KOTLIN_EXCEPTION = 'ExpoBraintree:`KotlinException',
+  SWIFT_EXCEPTION = 'ExpoBraintree:`SwiftException',
   USER_CANCEL_EXCEPTION = 'ExpoBraintree:`UserCancelException',
   TOKENIZE_EXCEPTION = 'ExpoBraintree:`TokenizeException',
 }
@@ -19,6 +20,14 @@ export enum VENMO_EXCEPTION_TYPES {
 export enum GOOGLE_PAY_ERROR_TYPES {
   GOOGLE_PAY_NOT_AVAILABLE = 'GOOGLE_PAY_NOT_AVAILABLE',
   GOOGLE_PAY_FAILED = 'GOOGLE_PAY_FAILED',
+}
+
+export enum APPLE_PAY_ERROR_TYPES {
+  APPLE_PAY_NOT_AVAILABLE_ERROR = 'APPLE_PAY_NOT_AVAILABLE_ERROR',
+  APPLE_PAY_CONFIGURATION_ERROR = 'APPLE_PAY_CONFIGURATION_ERROR',
+  APPLE_PAY_PRESENTATION_ERROR = 'APPLE_PAY_PRESENTATION_ERROR',
+  APPLE_PAY_TOKENIZATION_ERROR = 'APPLE_PAY_TOKENIZATION_ERROR',
+  APPLE_PAY_USER_CANCELLATION_ERROR = 'APPLE_PAY_USER_CANCELLATION_ERROR',
 }
 
 export enum ERROR_TYPES {
@@ -276,5 +285,133 @@ export type BTGooglePayNonceResult = {
 export type BTGooglePayError = {
   code?: EXCEPTION_TYPES | GOOGLE_PAY_ERROR_TYPES;
   message?: string;
+  nativeError?: string;
+};
+
+export type BTApplePayMerchantCapability = '3ds' | 'credit' | 'debit' | 'emv';
+
+export type BTApplePaySupportedNetwork =
+  | 'amex'
+  | 'cartesBancaires'
+  | 'chinaUnionPay'
+  | 'discover'
+  | 'eftpos'
+  | 'electron'
+  | 'elo'
+  | 'idCredit'
+  | 'interac'
+  | 'jcb'
+  | 'mada'
+  | 'maestro'
+  | 'masterCard'
+  | 'privateLabel'
+  | 'quicPay'
+  | 'suica'
+  | 'visa';
+
+export type BTApplePayContactField =
+  | 'email'
+  | 'name'
+  | 'phone'
+  | 'postalAddress'
+  | 'phoneticName';
+
+export type BTApplePaySummaryItemType = 'final' | 'pending';
+
+export type BTApplePayShippingType =
+  | 'shipping'
+  | 'delivery'
+  | 'storePickup'
+  | 'servicePickup';
+
+export type BTApplePaySummaryItem = {
+  label: string;
+  /** Decimal amount in "X.YY" format */
+  amount: string;
+  type?: BTApplePaySummaryItemType;
+};
+
+export type BTApplePayShippingMethod = BTApplePaySummaryItem & {
+  identifier: string;
+  detail?: string;
+};
+
+export type BTApplePayPostalAddress = {
+  street?: string;
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  countryCode?: string;
+  subAdministrativeArea?: string;
+  subLocality?: string;
+};
+
+export type BTApplePayContact = {
+  emailAddress?: string;
+  phoneNumber?: string;
+  givenName?: string;
+  familyName?: string;
+  phoneticGivenName?: string;
+  phoneticFamilyName?: string;
+  postalAddress?: BTApplePayPostalAddress;
+};
+
+export type RequestApplePayOptions = {
+  clientToken: string;
+  /**
+   * Line items shown on the Apple Pay sheet. Apple expects the last item to be
+   * the grand total, labelled with your company name.
+   */
+  paymentSummaryItems: BTApplePaySummaryItem[];
+  /** Defaults to the merchant ID configured for Apple Pay in the Braintree gateway */
+  merchantIdentifier?: string;
+  /** Defaults to the country configured in the Braintree gateway */
+  countryCode?: string;
+  /** Defaults to the currency configured in the Braintree gateway */
+  currencyCode?: string;
+  /** Defaults to the card networks enabled in the Braintree gateway */
+  supportedNetworks?: BTApplePaySupportedNetwork[];
+  /** Defaults to ['3ds'] */
+  merchantCapabilities?: BTApplePayMerchantCapability[];
+  requiredBillingContactFields?: BTApplePayContactField[];
+  requiredShippingContactFields?: BTApplePayContactField[];
+  shippingMethods?: BTApplePayShippingMethod[];
+  billingContact?: BTApplePayContact;
+  shippingContact?: BTApplePayContact;
+  shippingType?: BTApplePayShippingType;
+  /** Base64 or plain string, hashed into the payment token by Apple */
+  applicationData?: string;
+};
+
+export type BTApplePayBinDataResult = {
+  prepaid?: string;
+  healthcare?: string;
+  debit?: string;
+  durbinRegulated?: string;
+  commercial?: string;
+  payroll?: string;
+  issuingBank?: string;
+  countryOfIssuance?: string;
+  productID?: string;
+};
+
+export type BTApplePayNonceResult = {
+  nonce: string;
+  type: string;
+  isDefault: boolean;
+  isDeviceToken: boolean;
+  /** Card network reported by Wallet, e.g. "Visa" or "MasterCard" */
+  cardNetwork?: string;
+  binData?: BTApplePayBinDataResult;
+};
+
+export type BTApplePayError = {
+  error?: 'true';
+  code?: EXCEPTION_TYPES;
+  message?: APPLE_PAY_ERROR_TYPES | ERROR_TYPES | string;
+  domain?: APPLE_PAY_ERROR_TYPES | ERROR_TYPES | string;
   nativeError?: string;
 };

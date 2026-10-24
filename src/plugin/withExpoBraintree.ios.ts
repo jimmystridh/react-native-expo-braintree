@@ -2,6 +2,7 @@ import {
   IOSConfig,
   WarningAggregator,
   withAppDelegate,
+  withEntitlementsPlist,
   withInfoPlist,
   type ConfigPlugin,
   type ExportedConfigWithProps,
@@ -71,6 +72,41 @@ export const withVenmoScheme: ConfigPlugin = (expoConfig) => {
       config.modResults.LSApplicationQueriesSchemes.push(venmoScheme);
     }
 
+    return config;
+  });
+};
+
+const APPLE_PAY_ENTITLEMENT = 'com.apple.developer.in-app-payments';
+
+export const addApplePayMerchantId = <T extends Record<string, unknown>>(
+  entitlements: T,
+  merchantIdentifier: string
+): T => {
+  const existingValue = entitlements[APPLE_PAY_ENTITLEMENT];
+  const merchantIds = Array.isArray(existingValue)
+    ? existingValue.filter((value) => typeof value === 'string')
+    : [];
+
+  if (!merchantIds.includes(merchantIdentifier)) {
+    merchantIds.push(merchantIdentifier);
+  }
+
+  return { ...entitlements, [APPLE_PAY_ENTITLEMENT]: merchantIds };
+};
+
+/*
+ * Add the Apple Pay merchant ID to the in-app payments entitlement
+ * @see https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.in-app-payments
+ */
+export const withApplePayMerchantId: ConfigPlugin<string> = (
+  expoConfig,
+  merchantIdentifier
+) => {
+  return withEntitlementsPlist(expoConfig, (config) => {
+    config.modResults = addApplePayMerchantId(
+      config.modResults,
+      merchantIdentifier
+    );
     return config;
   });
 };
