@@ -228,7 +228,7 @@ func application(
 ```
 
 4. Run `pod install`. The `Braintree/ApplePay` pod is already declared by this library.
-5. Test on a real device with a card in Wallet. The simulator cannot present the Apple Pay sheet.
+5. Use the iOS Simulator to exercise the sheet and delegate callbacks with simulated cards. Test the complete Braintree tokenization flow on an Apple Pay-capable physical device with an Apple Pay sandbox test card. See the [Apple Pay testing notes](USAGE_4.X.md#apple-pay-ios-only).
 
 Apple Pay does not need any `AppDelegate` or URL scheme changes.
 

@@ -57,6 +57,6 @@ If `initializeVenmo` is set to `"true"`, the plugin automatically modifies `AppD
 2. Enable Apple Pay for that merchant ID in the Braintree Control Panel. This is where you create the Apple Pay Payment Processing Certificate.
 3. Set `applePayMerchantIdentifier` in the plugin options to a merchant ID string or an array such as `["merchant.com.example", "merchant.com.example.store"]`. The plugin adds each merchant ID to your entitlements without duplicates. Apple Pay does not need any `AppDelegate` changes.
 4. Run `npx expo prebuild` and rebuild the iOS app so Xcode picks up the new entitlement.
-5. Test on a real device with a card in Wallet. The simulator cannot present the Apple Pay sheet.
+5. Use the iOS Simulator to exercise the sheet and delegate callbacks with simulated cards. Test the complete Braintree tokenization flow on an Apple Pay-capable physical device with an Apple Pay sandbox test card. See the [Apple Pay testing notes](USAGE_4.X.md#apple-pay-ios-only).
 
 [withExpoBraintree.android.ts](src/plugin/withExpoBraintree.android.ts)

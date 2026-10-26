@@ -371,8 +371,9 @@ export default function App() {
             <View style={[styles.section]}>
               <Text style={styles.sectionTitle}>6. Apple Pay</Text>
               <Text style={styles.label}>
-                Needs a real device with a card in Wallet and Apple Pay enabled
-                for this merchant ID in the Braintree gateway.
+                The simulator can exercise the payment sheet. For end-to-end
+                testing, use a real device with a card in Wallet and Apple Pay
+                enabled for this merchant ID in the Braintree gateway.
               </Text>
               <TouchableOpacity
                 style={styles.buttonApplePay}
