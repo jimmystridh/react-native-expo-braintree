@@ -178,7 +178,7 @@ The iOS Simulator can present the Apple Pay sheet with simulated cards and retur
 
 `APPLE_PAY_NOT_AVAILABLE_ERROR` means the device cannot make Apple Pay payments or no card matches the configured networks and merchant capabilities; it is not an automatic result of running in the simulator. If the user closes the sheet it returns `APPLE_PAY_USER_CANCELLATION_ERROR`. A failed tokenization keeps the sheet open so the user can pick another card, and is reported as `APPLE_PAY_TOKENIZATION_ERROR` only if the sheet is closed without a successful payment.
 
-A missing client token, merchant ID, or supported networks returns `APPLE_PAY_CONFIGURATION_ERROR`. Merchant ID and networks are checked after applying the gateway defaults and caller overrides. Wallet eligibility checks both the configured networks and `merchantCapabilities`.
+A missing client token, invalid `paymentSummaryItems`, or a missing merchant ID or supported networks returns `APPLE_PAY_CONFIGURATION_ERROR`. Options are parsed before fetching the gateway configuration. After gateway defaults and caller overrides are applied, merchant ID and networks are validated before checking Wallet eligibility using the configured networks and `merchantCapabilities`. This order also applies to devices without Apple Pay, which may still fetch the gateway configuration before eligibility is determined.
 
 See [INTEGRATION_4.X_EXPO.md](INTEGRATION_4.X_EXPO.md#apple-pay) or [INTEGRATION_4.X_REACT_NATIVE_CLI.md](INTEGRATION_4.X_REACT_NATIVE_CLI.md#5-apple-pay-optional) for the required merchant ID setup.
 
