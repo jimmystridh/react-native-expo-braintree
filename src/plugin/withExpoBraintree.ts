@@ -64,10 +64,10 @@ export type ExpoBraintreePluginProps = {
    */
   initializeVenmo?: 'true' | 'false';
   /**
-   * Apple Pay merchant ID (e.g. merchant.com.example) added to the
+   * Apple Pay merchant ID or IDs (e.g. merchant.com.example) added to the
    * com.apple.developer.in-app-payments entitlement
    */
-  applePayMerchantIdentifier?: string;
+  applePayMerchantIdentifier?: string | string[];
 };
 
 export const withExpoBraintreePlugin: ConfigPlugin<ExpoBraintreePluginProps> = (

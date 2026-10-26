@@ -80,25 +80,30 @@ const APPLE_PAY_ENTITLEMENT = 'com.apple.developer.in-app-payments';
 
 export const addApplePayMerchantId = <T extends Record<string, unknown>>(
   entitlements: T,
-  merchantIdentifier: string
+  merchantIdentifier: string | string[]
 ): T => {
   const existingValue = entitlements[APPLE_PAY_ENTITLEMENT];
   const merchantIds = Array.isArray(existingValue)
     ? existingValue.filter((value) => typeof value === 'string')
     : [];
 
-  if (!merchantIds.includes(merchantIdentifier)) {
-    merchantIds.push(merchantIdentifier);
+  const identifiers = Array.isArray(merchantIdentifier)
+    ? merchantIdentifier
+    : [merchantIdentifier];
+  for (const identifier of identifiers) {
+    if (!merchantIds.includes(identifier)) {
+      merchantIds.push(identifier);
+    }
   }
 
   return { ...entitlements, [APPLE_PAY_ENTITLEMENT]: merchantIds };
 };
 
 /*
- * Add the Apple Pay merchant ID to the in-app payments entitlement
+ * Add Apple Pay merchant IDs to the in-app payments entitlement
  * @see https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.in-app-payments
  */
-export const withApplePayMerchantId: ConfigPlugin<string> = (
+export const withApplePayMerchantId: ConfigPlugin<string | string[]> = (
   expoConfig,
   merchantIdentifier
 ) => {

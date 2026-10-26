@@ -173,4 +173,30 @@ describe('addApplePayMerchantId', () => {
       [entitlementKey]: ['merchant.a', 'merchant.b', 'merchant.c'],
     });
   });
+
+  it('accepts multiple merchant IDs and adds each only once', () => {
+    const entitlements = {
+      'aps-environment': 'development',
+      [entitlementKey]: ['merchant.a'],
+    };
+
+    expect(
+      addApplePayMerchantId(entitlements, [
+        'merchant.a',
+        'merchant.b',
+        'merchant.b',
+        'merchant.c',
+      ])
+    ).toEqual({
+      'aps-environment': 'development',
+      [entitlementKey]: ['merchant.a', 'merchant.b', 'merchant.c'],
+    });
+    expect(entitlements[entitlementKey]).toEqual(['merchant.a']);
+  });
+
+  it('preserves existing IDs when given an empty array', () => {
+    const entitlements = { [entitlementKey]: ['merchant.a'] };
+
+    expect(addApplePayMerchantId(entitlements, [])).toEqual(entitlements);
+  });
 });
