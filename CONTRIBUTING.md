@@ -91,6 +91,12 @@ Remember to add tests for your change if possible. Run the unit tests by:
 yarn test
 ```
 
+On macOS with Xcode installed, run the native Apple Pay shipping-total and contact-serialization tests with:
+
+```sh
+yarn test:ios
+```
+
 ### Commit message convention
 
 We follow the [conventional commits specification](https://www.conventionalcommits.org/en) for our commit messages:
