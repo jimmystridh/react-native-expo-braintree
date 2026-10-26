@@ -194,6 +194,9 @@ export const requestApplePayPayment = async (
       'isDefault',
       'isDeviceToken',
       'binData',
+      'billingContact',
+      'shippingContact',
+      'shippingMethod',
     ]);
   } catch (ex: unknown) {
     return catchError(ex) as BTApplePayError;

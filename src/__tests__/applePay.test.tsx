@@ -3,6 +3,9 @@ import {
   APPLE_PAY_ERROR_TYPES,
   EXCEPTION_TYPES,
   requestApplePayPayment,
+  type BTApplePayContact,
+  type BTApplePayNonceResult,
+  type BTApplePayShippingMethod,
   type RequestApplePayOptions,
 } from '../index';
 import { addApplePayMerchantId } from '../plugin/withExpoBraintree.ios';
@@ -68,6 +71,58 @@ describe('requestApplePayPayment', () => {
       cardNetwork: 'Visa',
       binData: { prepaid: 'No', debit: 'Yes' },
     });
+  });
+
+  it('returns the authorized contacts and selected shipping method as objects', async () => {
+    const billingContact: BTApplePayContact = {
+      givenName: 'Ada',
+      familyName: 'Lovelace',
+      postalAddress: { street: '1 Billing Street', countryCode: 'GB' },
+    };
+    const shippingContact: BTApplePayContact = {
+      emailAddress: 'ada@example.com',
+      phoneNumber: '+44 20 1234 5678',
+      givenName: 'Ada',
+      familyName: 'Lovelace',
+      phoneticGivenName: 'Ay-duh',
+      phoneticFamilyName: 'Luv-lays',
+      postalAddress: {
+        street: '2 Shipping Street\nFlat 3',
+        city: 'London',
+        state: 'London',
+        postalCode: 'SW1A 1AA',
+        country: 'United Kingdom',
+        countryCode: 'GB',
+        subAdministrativeArea: 'Westminster',
+        subLocality: 'St James’s',
+      },
+    };
+    const shippingMethod: BTApplePayShippingMethod = {
+      identifier: 'express',
+      label: 'Express delivery',
+      detail: 'Next day',
+      amount: '7.25',
+      type: 'final',
+    };
+    const expected: BTApplePayNonceResult = {
+      nonce: 'fake-nonce',
+      type: 'ApplePayCard',
+      isDefault: false,
+      isDeviceToken: true,
+      billingContact,
+      shippingContact,
+      shippingMethod,
+    };
+    mockRequestApplePayPayment.mockResolvedValue({
+      ...expected,
+      isDefault: 'false',
+      isDeviceToken: 'true',
+      billingContact: JSON.stringify(billingContact),
+      shippingContact: JSON.stringify(shippingContact),
+      shippingMethod: JSON.stringify(shippingMethod),
+    });
+
+    await expect(requestApplePayPayment(options)).resolves.toEqual(expected);
   });
 
   it('returns native errors instead of throwing', async () => {

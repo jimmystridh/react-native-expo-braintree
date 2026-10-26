@@ -86,13 +86,14 @@ func prepareApplePayRequestOptions(options: [String: String]) throws -> ApplePay
     )
 }
 
-func prepareBTApplePayNonceResult(cardNonce: BTApplePayCardNonce, paymentMethod: PKPaymentMethod) -> NSDictionary {
+func prepareBTApplePayNonceResult(cardNonce: BTApplePayCardNonce, payment: PKPayment) -> NSDictionary {
     let result = NSMutableDictionary()
     result["nonce"] = cardNonce.nonce
     result["type"] = cardNonce.type
     result["isDefault"] = cardNonce.isDefault
     result["isDeviceToken"] = cardNonce.isDeviceToken
-    result["cardNetwork"] = paymentMethod.network?.rawValue ?? ""
+    result["cardNetwork"] = payment.token.paymentMethod.network?.rawValue ?? ""
+    result.addEntries(from: prepareApplePayPaymentDetails(payment))
 
     let binData = NSMutableDictionary()
     binData["prepaid"] = cardNonce.binData.prepaid

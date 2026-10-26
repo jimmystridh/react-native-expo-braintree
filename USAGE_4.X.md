@@ -163,10 +163,16 @@ const result = await requestApplePayPayment({
 });
 
 if ('nonce' in result) {
-  // result.cardNetwork, result.binData, result.isDeviceToken are also available
+  // result.cardNetwork, result.binData, result.isDeviceToken are also available.
+  // result.billingContact, result.shippingContact and result.shippingMethod
+  // contain the details from the authorized payment, when supplied by Wallet.
 }
 ```
 Implementation inside [requestApplePayPayment](src/index.tsx).
+
+To offer shipping choices, pass `shippingMethods` and include the first method's cost in the initial `paymentSummaryItems` total. The first method is selected by default. Selecting a different method updates the total by the price difference, including when switching back to the first method. If you show a separate shipping summary line, use the first method's exact label and amount so that line also updates. Prices are fixed per method; address-based shipping rates and tax recalculation are not supported.
+
+Request the fulfillment details you need with `requiredShippingContactFields` (for example, `['name', 'postalAddress', 'email', 'phone']`). The successful result includes `billingContact`, `shippingContact`, and `shippingMethod` when Wallet provides them. Contacts use the same shape as the input contacts, with postal street lines joined by `\n` in `postalAddress.street`; shipping method amounts are decimal strings.
 
 The Apple Pay sheet only appears on a real device with a card in Wallet. On the simulator, or when no card matches `supportedNetworks`, the method returns `APPLE_PAY_NOT_AVAILABLE_ERROR`. If the user closes the sheet it returns `APPLE_PAY_USER_CANCELLATION_ERROR`. A failed tokenization keeps the sheet open so the user can pick another card, and is reported as `APPLE_PAY_TOKENIZATION_ERROR` only if the sheet is closed without a successful payment.
 

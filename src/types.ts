@@ -378,6 +378,12 @@ export type RequestApplePayOptions = {
   merchantCapabilities?: BTApplePayMerchantCapability[];
   requiredBillingContactFields?: BTApplePayContactField[];
   requiredShippingContactFields?: BTApplePayContactField[];
+  /**
+   * The first method is selected initially; its cost must be included in the
+   * paymentSummaryItems total. Selecting another method adjusts that total by
+   * the price difference. An itemized shipping line must match the first
+   * method's label and amount to be updated as well.
+   */
   shippingMethods?: BTApplePayShippingMethod[];
   billingContact?: BTApplePayContact;
   shippingContact?: BTApplePayContact;
@@ -406,6 +412,12 @@ export type BTApplePayNonceResult = {
   /** Card network reported by Wallet, e.g. "Visa" or "MasterCard" */
   cardNetwork?: string;
   binData?: BTApplePayBinDataResult;
+  /** Billing contact from the authorized payment, when provided by Wallet */
+  billingContact?: BTApplePayContact;
+  /** Shipping contact from the authorized payment, when provided by Wallet */
+  shippingContact?: BTApplePayContact;
+  /** Shipping method selected in Wallet */
+  shippingMethod?: BTApplePayShippingMethod;
 };
 
 export type BTApplePayError = {
