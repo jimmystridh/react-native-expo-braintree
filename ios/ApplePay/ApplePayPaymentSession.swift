@@ -38,12 +38,8 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
     }
 
     private func present(_ paymentRequest: PKPaymentRequest) {
-        guard !paymentRequest.merchantIdentifier.isEmpty else {
-            finish(with: applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: "No merchantIdentifier was passed and none is configured for Apple Pay in the Braintree gateway"))
-            return
-        }
-        guard PKPaymentAuthorizationController.canMakePayments(usingNetworks: paymentRequest.supportedNetworks) else {
-            finish(with: applePayErrorResult(.APPLE_PAY_NOT_AVAILABLE_ERROR, nativeError: "No card in Wallet matches the supported networks"))
+        if let error = applePayPaymentRequestError(paymentRequest) {
+            finish(with: error)
             return
         }
         let controller = PKPaymentAuthorizationController(paymentRequest: paymentRequest)

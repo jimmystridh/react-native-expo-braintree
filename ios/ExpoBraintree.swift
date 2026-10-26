@@ -145,7 +145,7 @@ class ExpoBraintree: HybridExpoBraintreeSpec {
     func requestApplePayPayment(options: Dictionary<String, String>) throws -> Promise<Dictionary<String, String>> {
         let clientToken = options["clientToken"] ?? ""
         if clientToken.isEmpty {
-            return Promise.resolved(withResult: applePayErrorResult(.API_CLIENT_INITIALIZATION_ERROR, nativeError: "Missing clientToken"))
+            return Promise.resolved(withResult: applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: "Missing clientToken"))
         }
         guard PKPaymentAuthorizationController.canMakePayments() else {
             return Promise.resolved(withResult: applePayErrorResult(.APPLE_PAY_NOT_AVAILABLE_ERROR, nativeError: "This device cannot make Apple Pay payments"))

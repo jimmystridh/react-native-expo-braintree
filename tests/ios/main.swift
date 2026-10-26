@@ -144,6 +144,72 @@ final class AuthorizedPayment: PKPayment {
     }
 }
 
-let suite = XCTestSuite(forTestCaseClass: ApplePayPaymentDetailsTests.self)
+@objcMembers final class ApplePayValidationTests: XCTestCase {
+    private func paymentRequest() -> PKPaymentRequest {
+        let request = PKPaymentRequest()
+        request.merchantIdentifier = "merchant.com.example"
+        request.supportedNetworks = [.visa, .masterCard]
+        request.merchantCapabilities = [.threeDSecure, .debit]
+        return request
+    }
+
+    func testMissingNetworksAreAConfigurationErrorBeforeCheckingWallet() {
+        let request = paymentRequest()
+        request.supportedNetworks = []
+        var didCheckWallet = false
+
+        let error = applePayPaymentRequestError(request) { _, _ in
+            didCheckWallet = true
+            return false
+        }
+
+        XCTAssertEqual(error?["message"], ERROR_TYPES.APPLE_PAY_CONFIGURATION_ERROR.rawValue)
+        XCTAssertTrue(error?["nativeError"]?.contains("supportedNetworks") == true)
+        XCTAssertFalse(didCheckWallet)
+    }
+
+    func testMissingMerchantIsAConfigurationErrorBeforeCheckingWallet() {
+        let request = paymentRequest()
+        request.merchantIdentifier = ""
+        var didCheckWallet = false
+
+        let error = applePayPaymentRequestError(request) { _, _ in
+            didCheckWallet = true
+            return false
+        }
+
+        XCTAssertEqual(error?["message"], ERROR_TYPES.APPLE_PAY_CONFIGURATION_ERROR.rawValue)
+        XCTAssertFalse(didCheckWallet)
+    }
+
+    func testWalletCheckIncludesNetworksAndMerchantCapabilities() {
+        let request = paymentRequest()
+        var checkedNetworks: [PKPaymentNetwork] = []
+        var checkedCapabilities: PKMerchantCapability = []
+
+        let error = applePayPaymentRequestError(request) { networks, capabilities in
+            checkedNetworks = networks
+            checkedCapabilities = capabilities
+            return true
+        }
+
+        XCTAssertNil(error)
+        XCTAssertEqual(checkedNetworks, request.supportedNetworks)
+        XCTAssertEqual(checkedCapabilities, request.merchantCapabilities)
+    }
+
+    func testNoMatchingCardIsAnAvailabilityError() {
+        let request = paymentRequest()
+
+        let error = applePayPaymentRequestError(request) { _, _ in false }
+
+        XCTAssertEqual(error?["message"], ERROR_TYPES.APPLE_PAY_NOT_AVAILABLE_ERROR.rawValue)
+        XCTAssertTrue(error?["nativeError"]?.contains("merchant capabilities") == true)
+    }
+}
+
+let suite = XCTestSuite(name: "Apple Pay")
+suite.addTest(XCTestSuite(forTestCaseClass: ApplePayPaymentDetailsTests.self))
+suite.addTest(XCTestSuite(forTestCaseClass: ApplePayValidationTests.self))
 suite.run()
 exit(suite.testRun?.hasSucceeded == true ? 0 : 1)

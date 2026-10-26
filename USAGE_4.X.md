@@ -176,6 +176,8 @@ Request the fulfillment details you need with `requiredShippingContactFields` (f
 
 The Apple Pay sheet only appears on a real device with a card in Wallet. On the simulator, or when no card matches `supportedNetworks`, the method returns `APPLE_PAY_NOT_AVAILABLE_ERROR`. If the user closes the sheet it returns `APPLE_PAY_USER_CANCELLATION_ERROR`. A failed tokenization keeps the sheet open so the user can pick another card, and is reported as `APPLE_PAY_TOKENIZATION_ERROR` only if the sheet is closed without a successful payment.
 
+A missing client token, merchant ID, or supported networks returns `APPLE_PAY_CONFIGURATION_ERROR`. Merchant ID and networks are checked after applying the gateway defaults and caller overrides. Wallet eligibility checks both the configured networks and `merchantCapabilities`.
+
 See [INTEGRATION_4.X_EXPO.md](INTEGRATION_4.X_EXPO.md#apple-pay) or [INTEGRATION_4.X_REACT_NATIVE_CLI.md](INTEGRATION_4.X_REACT_NATIVE_CLI.md#5-apple-pay-optional) for the required merchant ID setup.
 
 ---

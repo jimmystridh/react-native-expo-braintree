@@ -109,14 +109,6 @@ func prepareBTApplePayNonceResult(cardNonce: BTApplePayCardNonce, payment: PKPay
     return result
 }
 
-func applePayErrorResult(
-    _ message: ERROR_TYPES,
-    code: EXCEPTION_TYPES = .SWIFT_EXCEPTION,
-    nativeError: String
-) -> Dictionary<String, String> {
-    return ["error": "true", "code": code.rawValue, "message": message.rawValue, "domain": message.rawValue, "nativeError": nativeError]
-}
-
 private func nonEmpty(_ value: String?) -> String? {
     guard let value = value, !value.isEmpty else { return nil }
     return value
