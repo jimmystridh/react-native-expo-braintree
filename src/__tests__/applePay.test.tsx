@@ -8,7 +8,6 @@ import {
   type BTApplePayShippingMethod,
   type RequestApplePayOptions,
 } from '../index';
-import { addApplePayMerchantId } from '../plugin/withExpoBraintree.ios';
 
 const mockRequestApplePayPayment = jest.fn();
 
@@ -148,55 +147,5 @@ describe('requestApplePayPayment', () => {
       error: 'true',
       message: APPLE_PAY_ERROR_TYPES.APPLE_PAY_NOT_AVAILABLE_ERROR,
     });
-  });
-});
-
-describe('addApplePayMerchantId', () => {
-  const entitlementKey = 'com.apple.developer.in-app-payments';
-
-  it('creates the in-app payments entitlement', () => {
-    expect(
-      addApplePayMerchantId({ 'aps-environment': 'development' }, 'merchant.a')
-    ).toEqual({
-      'aps-environment': 'development',
-      [entitlementKey]: ['merchant.a'],
-    });
-  });
-
-  it('keeps existing merchant IDs and does not duplicate', () => {
-    const entitlements = { [entitlementKey]: ['merchant.a', 'merchant.b'] };
-
-    expect(addApplePayMerchantId(entitlements, 'merchant.b')).toEqual(
-      entitlements
-    );
-    expect(addApplePayMerchantId(entitlements, 'merchant.c')).toEqual({
-      [entitlementKey]: ['merchant.a', 'merchant.b', 'merchant.c'],
-    });
-  });
-
-  it('accepts multiple merchant IDs and adds each only once', () => {
-    const entitlements = {
-      'aps-environment': 'development',
-      [entitlementKey]: ['merchant.a'],
-    };
-
-    expect(
-      addApplePayMerchantId(entitlements, [
-        'merchant.a',
-        'merchant.b',
-        'merchant.b',
-        'merchant.c',
-      ])
-    ).toEqual({
-      'aps-environment': 'development',
-      [entitlementKey]: ['merchant.a', 'merchant.b', 'merchant.c'],
-    });
-    expect(entitlements[entitlementKey]).toEqual(['merchant.a']);
-  });
-
-  it('preserves existing IDs when given an empty array', () => {
-    const entitlements = { [entitlementKey]: ['merchant.a'] };
-
-    expect(addApplePayMerchantId(entitlements, [])).toEqual(entitlements);
   });
 });

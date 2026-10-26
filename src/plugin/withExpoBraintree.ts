@@ -9,6 +9,7 @@ import {
   withVenmoScheme,
   withExpoBraintreeAppDelegate,
   withBraintreeWrapperFile,
+  type ApplePayMerchantIdentifiers,
 } from './withExpoBraintree.ios';
 
 const path = require('path');
@@ -65,9 +66,10 @@ export type ExpoBraintreePluginProps = {
   initializeVenmo?: 'true' | 'false';
   /**
    * Apple Pay merchant ID or IDs (e.g. merchant.com.example) added to the
-   * com.apple.developer.in-app-payments entitlement
+   * com.apple.developer.in-app-payments entitlement. Missing or blank IDs are ignored;
+   * empty lists skip the Apple Pay entitlement plugin.
    */
-  applePayMerchantIdentifier?: string | string[];
+  applePayMerchantIdentifier?: ApplePayMerchantIdentifiers;
 };
 
 export const withExpoBraintreePlugin: ConfigPlugin<ExpoBraintreePluginProps> = (
@@ -95,11 +97,7 @@ export const withExpoBraintreePlugin: ConfigPlugin<ExpoBraintreePluginProps> = (
     config = withVenmoScheme(config);
   }
 
-  if (props?.applePayMerchantIdentifier) {
-    config = withApplePayMerchantId(config, props.applePayMerchantIdentifier);
-  }
-
-  return config;
+  return withApplePayMerchantId(config, props?.applePayMerchantIdentifier);
 };
 
 export default createRunOncePlugin(

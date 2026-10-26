@@ -78,18 +78,39 @@ export const withVenmoScheme: ConfigPlugin = (expoConfig) => {
 
 const APPLE_PAY_ENTITLEMENT = 'com.apple.developer.in-app-payments';
 
+export type ApplePayMerchantIdentifiers =
+  | string
+  | (string | undefined)[]
+  | undefined;
+
+const normalizeApplePayMerchantIdentifiers = (
+  merchantIdentifier: ApplePayMerchantIdentifiers = []
+): string[] => {
+  const identifiers = Array.isArray(merchantIdentifier)
+    ? merchantIdentifier
+    : [merchantIdentifier];
+  return identifiers
+    .filter(
+      (identifier): identifier is string => typeof identifier === 'string'
+    )
+    .map((identifier) => identifier.trim())
+    .filter((identifier) => identifier.length > 0);
+};
+
 export const addApplePayMerchantId = <T extends Record<string, unknown>>(
   entitlements: T,
-  merchantIdentifier: string | string[]
+  merchantIdentifier: ApplePayMerchantIdentifiers
 ): T => {
+  const identifiers = normalizeApplePayMerchantIdentifiers(merchantIdentifier);
+  if (identifiers.length === 0) {
+    return entitlements;
+  }
+
   const existingValue = entitlements[APPLE_PAY_ENTITLEMENT];
   const merchantIds = Array.isArray(existingValue)
     ? existingValue.filter((value) => typeof value === 'string')
     : [];
 
-  const identifiers = Array.isArray(merchantIdentifier)
-    ? merchantIdentifier
-    : [merchantIdentifier];
   for (const identifier of identifiers) {
     if (!merchantIds.includes(identifier)) {
       merchantIds.push(identifier);
@@ -103,15 +124,16 @@ export const addApplePayMerchantId = <T extends Record<string, unknown>>(
  * Add Apple Pay merchant IDs to the in-app payments entitlement
  * @see https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.in-app-payments
  */
-export const withApplePayMerchantId: ConfigPlugin<string | string[]> = (
-  expoConfig,
-  merchantIdentifier
-) => {
+export const withApplePayMerchantId: ConfigPlugin<
+  ApplePayMerchantIdentifiers
+> = (expoConfig, merchantIdentifier) => {
+  const identifiers = normalizeApplePayMerchantIdentifiers(merchantIdentifier);
+  if (identifiers.length === 0) {
+    return expoConfig;
+  }
+
   return withEntitlementsPlist(expoConfig, (config) => {
-    config.modResults = addApplePayMerchantId(
-      config.modResults,
-      merchantIdentifier
-    );
+    config.modResults = addApplePayMerchantId(config.modResults, identifiers);
     return config;
   });
 };
