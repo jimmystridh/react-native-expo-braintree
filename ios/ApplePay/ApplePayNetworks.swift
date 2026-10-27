@@ -22,26 +22,26 @@ private let applePayNetworks: [String: PKPaymentNetwork] = [
     "visa": .visa,
 ]
 
+private let applePayNetworkAliases = [
+    "master_card": "mastercard", "americanexpress": "amex",
+    "china_union_pay": "chinaunionpay", "private_label": "privatelabel",
+]
+
+private let applePayNetworksByName = Dictionary(uniqueKeysWithValues: applePayNetworks.map { ($0.key.lowercased(), $0.value) })
+
+private let applePayCardNetworkNames: [PKPaymentNetwork: String] = [
+    .visa: "Visa", .masterCard: "MasterCard", .amex: "Amex", .JCB: "JCB",
+    .maestro: "Maestro", .discover: "Discover", .chinaUnionPay: "UnionPay",
+]
+
 func applePayNetwork(named name: String) -> PKPaymentNetwork? {
-    let aliases = [
-        "master_card": "masterCard", "americanexpress": "amex",
-        "china_union_pay": "chinaUnionPay", "private_label": "privateLabel",
-    ]
-    let canonicalName = aliases[name.lowercased()] ?? name
-    return applePayNetworks.first {
-        $0.key.caseInsensitiveCompare(canonicalName) == .orderedSame
-    }?.value
+    let name = name.lowercased()
+    return applePayNetworksByName[applePayNetworkAliases[name] ?? name]
 }
 
 func applePayNetworkName(_ network: PKPaymentNetwork?) -> String? {
     guard let network = network else { return nil }
-    let cardNetworkNames: [PKPaymentNetwork: String] = [
-        .visa: "Visa", .masterCard: "MasterCard", .amex: "Amex", .JCB: "JCB",
-        .maestro: "Maestro", .discover: "Discover", .chinaUnionPay: "UnionPay",
-    ]
-    if let name = cardNetworkNames[network] {
-        return name
-    }
+    if let name = applePayCardNetworkNames[network] { return name }
     let rawValue = network.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
     return rawValue.isEmpty ? nil : rawValue
 }
