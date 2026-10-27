@@ -31,25 +31,30 @@ func prepareApplePayPaymentDetails(
     return result
 }
 
+private func normalizedApplePayContactFields(_ fields: [String: String?]) -> [String: String] {
+    fields.reduce(into: [:]) { result, entry in
+        guard let value = entry.value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return }
+        result[entry.key] = entry.key == "countryCode" ? value.uppercased() : value
+    }
+}
+
 private func prepareApplePayContact(_ contact: PKContact) -> [String: Any] {
-    var result: [String: Any] = [:]
-    result["emailAddress"] = contact.emailAddress
-    result["phoneNumber"] = contact.phoneNumber?.stringValue
-    result["givenName"] = contact.name?.givenName
-    result["familyName"] = contact.name?.familyName
-    result["phoneticGivenName"] = contact.name?.phoneticRepresentation?.givenName
-    result["phoneticFamilyName"] = contact.name?.phoneticRepresentation?.familyName
+    var result: [String: Any] = normalizedApplePayContactFields([
+        "emailAddress": contact.emailAddress,
+        "phoneNumber": contact.phoneNumber?.stringValue,
+        "givenName": contact.name?.givenName,
+        "familyName": contact.name?.familyName,
+        "phoneticGivenName": contact.name?.phoneticRepresentation?.givenName,
+        "phoneticFamilyName": contact.name?.phoneticRepresentation?.familyName,
+    ])
     if let address = contact.postalAddress {
-        result["postalAddress"] = [
-            "street": address.street,
-            "city": address.city,
-            "state": address.state,
-            "postalCode": address.postalCode,
-            "country": address.country,
-            "countryCode": address.isoCountryCode,
-            "subAdministrativeArea": address.subAdministrativeArea,
+        let fields = normalizedApplePayContactFields([
+            "street": address.street, "city": address.city, "state": address.state,
+            "postalCode": address.postalCode, "country": address.country,
+            "countryCode": address.isoCountryCode, "subAdministrativeArea": address.subAdministrativeArea,
             "subLocality": address.subLocality,
-        ]
+        ])
+        if !fields.isEmpty { result["postalAddress"] = fields }
     }
     return result
 }

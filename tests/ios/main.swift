@@ -105,6 +105,22 @@ final class AuthorizedPayment: PKPayment {
         ])
     }
 
+    func testReturnedContactsTrimOptionalFieldsAndUppercaseCountryCodes() throws {
+        let contact = PKContact()
+        contact.emailAddress = " ada@example.com "
+        let address = CNMutablePostalAddress()
+        address.street = " 1 Main Street "
+        address.isoCountryCode = " gb "
+        address.state = " "
+        contact.postalAddress = address
+        let payment = AuthorizedPayment()
+        payment.selectedShippingContact = contact
+        let details = try prepareApplePayPaymentDetails(payment)
+        let result = try XCTUnwrap(details["shippingContact"] as? [String: Any])
+        XCTAssertEqual(result["emailAddress"] as? String, "ada@example.com")
+        XCTAssertEqual(result["postalAddress"] as? [String: String], ["street": "1 Main Street", "countryCode": "GB"])
+    }
+
     func testAuthorizationFailuresUseThePassKitErrorDomain() {
         let result = applePayAuthorizationFailure()
         XCTAssertEqual(result.status, .failure)
