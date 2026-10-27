@@ -3,23 +3,23 @@ import Foundation
 import PassKit
 
 enum ApplePayConfigurationError: LocalizedError {
-    case missingSummaryItems
+    case missingSummaryItems(field: String)
     case invalidJSON(field: String, expected: String)
     case invalidArrayElement(field: String, index: Int)
-    case invalidSummaryItem(index: Int)
+    case invalidSummaryItem(field: String, index: Int)
     case invalidShippingMethod(index: Int)
     case invalidValue(field: String, expected: String)
 
     var errorDescription: String? {
         switch self {
-        case .missingSummaryItems:
-            return "paymentSummaryItems must contain at least one item"
+        case let .missingSummaryItems(field):
+            return "\(field) must contain at least one item"
         case let .invalidJSON(field, expected):
             return "\(field) must be a valid JSON \(expected)"
         case let .invalidArrayElement(field, index):
             return "\(field)[\(index)] is invalid"
-        case let .invalidSummaryItem(index):
-            return "paymentSummaryItems[\(index)] needs a non-empty label and a strict decimal amount string; the grand total must be positive"
+        case let .invalidSummaryItem(field, index):
+            return "\(field)[\(index)] needs a non-empty label and a strict decimal amount string; the grand total must be positive"
         case let .invalidShippingMethod(index):
             return "shippingMethods[\(index)] needs a unique non-empty identifier, a non-empty label, and a non-negative strict decimal amount string"
         case let .invalidValue(field, expected):
@@ -39,11 +39,25 @@ struct ApplePayRequestOptions {
     let requiredShippingContactFields: Set<PKContactField>
     let shippingMethods: [PKShippingMethod]
     let shippingMethodAmounts: [String: String]
-    let shippingSummaryItemIndex: Int?
+    let shippingSummaryItems: [String: [PKPaymentSummaryItem]]
     let billingContact: PKContact?
     let shippingContact: PKContact?
     let shippingType: PKShippingType?
     let applicationData: Data?
+
+    func summaryItems(for shippingMethod: PKShippingMethod) throws -> [PKPaymentSummaryItem] {
+        guard let identifier = shippingMethod.identifier, let items = shippingSummaryItems[identifier] else {
+            throw ApplePayConfigurationError.invalidValue(field: "shippingMethods", expected: "does not contain the selected shipping method")
+        }
+        return items
+    }
+
+    func validateAmounts(currencyCode: String) throws {
+        try validateApplePayAmounts(paymentSummaryItems, shippingMethods: shippingMethods, currencyCode: currencyCode)
+        for (index, method) in shippingMethods.enumerated() {
+            try validateApplePaySummaryAmounts(try summaryItems(for: method), currencyCode: currencyCode, field: "shippingMethods[\(index)].paymentSummaryItems")
+        }
+    }
 
     // Braintree prefills merchant ID, country, currency and networks from the gateway configuration.
     func apply(to paymentRequest: PKPaymentRequest) {
@@ -82,23 +96,32 @@ struct ApplePayRequestOptions {
 }
 
 func prepareApplePayRequestOptions(options: [String: String]) throws -> ApplePayRequestOptions {
+    let countryCode = try validatedApplePayCountryCode(options["countryCode"])
+    let currencyCode = try validatedApplePayCurrencyCode(options["currencyCode"])
     let shipping = try mapShippingMethods(from: decodeArray(options["shippingMethods"], field: "shippingMethods"))
     let summaryItems = try mapSummaryItems(from: decodeArray(options["paymentSummaryItems"], field: "paymentSummaryItems"))
-    let shippingIndex = try mapShippingSummaryItemIndex(options["shippingSummaryItemIndex"], summaryItems: summaryItems, methods: shipping.methods)
-    for (index, method) in shipping.methods.enumerated() {
-        do {
-            _ = try prepareApplePaySummaryItems(
-                summaryItems: summaryItems, defaultShippingMethod: shipping.methods.first,
-                selectedShippingMethod: method, shippingSummaryItemIndex: shippingIndex
-            )
-        } catch {
-            throw ApplePayConfigurationError.invalidValue(field: "shippingMethods[\(index)]", expected: "must leave a positive payment total")
+    if let currencyCode = currencyCode {
+        try validateApplePayAmounts(summaryItems, shippingMethods: shipping.methods, currencyCode: currencyCode)
+    }
+    if options["shippingSummaryItemIndex"] != nil {
+        throw ApplePayConfigurationError.invalidValue(field: "shippingSummaryItemIndex", expected: "is no longer supported; supply paymentSummaryItems for each shipping method")
+    }
+    if let first = shipping.methods.first, let identifier = first.identifier,
+       let initialItems = shipping.summaries[identifier], !sameApplePaySummaryItems(summaryItems, initialItems) {
+        throw ApplePayConfigurationError.invalidValue(field: "paymentSummaryItems", expected: "must match the first shipping method's paymentSummaryItems")
+    }
+    if let currencyCode = currencyCode {
+        for (index, method) in shipping.methods.enumerated() {
+            guard let identifier = method.identifier, let items = shipping.summaries[identifier] else {
+                throw ApplePayConfigurationError.invalidShippingMethod(index: index)
+            }
+            try validateApplePaySummaryAmounts(items, currencyCode: currencyCode, field: "shippingMethods[\(index)].paymentSummaryItems")
         }
     }
     return ApplePayRequestOptions(
         merchantIdentifier: nonEmpty(options["merchantIdentifier"]),
-        countryCode: try validatedApplePayRegionCode(options["countryCode"], field: "countryCode"),
-        currencyCode: try validatedApplePayRegionCode(options["currencyCode"], field: "currencyCode"),
+        countryCode: countryCode,
+        currencyCode: currencyCode,
         supportedNetworks: try mapSupportedNetworks(from: decodeStrings(options["supportedNetworks"], field: "supportedNetworks")),
         paymentSummaryItems: summaryItems,
         merchantCapabilities: try mapMerchantCapabilities(from: decodeStrings(options["merchantCapabilities"], field: "merchantCapabilities")),
@@ -106,7 +129,7 @@ func prepareApplePayRequestOptions(options: [String: String]) throws -> ApplePay
         requiredShippingContactFields: try mapContactFields(from: decodeStrings(options["requiredShippingContactFields"], field: "requiredShippingContactFields"), field: "requiredShippingContactFields"),
         shippingMethods: shipping.methods,
         shippingMethodAmounts: shipping.amounts,
-        shippingSummaryItemIndex: shippingIndex,
+        shippingSummaryItems: shipping.summaries,
         billingContact: mapContact(from: try decodeObject(options["billingContact"], field: "billingContact")),
         shippingContact: mapContact(from: try decodeObject(options["shippingContact"], field: "shippingContact")),
         shippingType: try mapShippingType(from: options["shippingType"]),
@@ -119,14 +142,8 @@ private func nonEmpty(_ value: String?) -> String? {
     return value
 }
 
-private func mapShippingSummaryItemIndex(_ value: String?, summaryItems: [PKPaymentSummaryItem], methods: [PKShippingMethod]) throws -> Int? {
-    guard let value = value else { return nil }
-    guard value.range(of: #"\A[0-9]+\z"#, options: .regularExpression) != nil,
-          let index = Int(value), index < summaryItems.count - 1,
-          let method = methods.first, summaryItems[index].amount == method.amount else {
-        throw ApplePayConfigurationError.invalidValue(field: "shippingSummaryItemIndex", expected: "must identify a line item matching the first shipping method's amount, before the total")
-    }
-    return index
+private func sameApplePaySummaryItems(_ left: [PKPaymentSummaryItem], _ right: [PKPaymentSummaryItem]) -> Bool {
+    left.count == right.count && zip(left, right).allSatisfy { $0.label == $1.label && $0.amount == $1.amount && $0.type == $1.type }
 }
 
 private func decodeArray(_ value: String?, field: String) throws -> [Any] {
@@ -225,13 +242,13 @@ private func canonicalDecimal(_ value: String) -> String {
     return negative && magnitude != "0" ? "-" + magnitude : magnitude
 }
 
-private func mapSummaryItems(from items: [Any]) throws -> [PKPaymentSummaryItem] {
+private func mapSummaryItems(from items: [Any], field: String = "paymentSummaryItems") throws -> [PKPaymentSummaryItem] {
     guard !items.isEmpty else {
-        throw ApplePayConfigurationError.missingSummaryItems
+        throw ApplePayConfigurationError.missingSummaryItems(field: field)
     }
     return try items.enumerated().map { index, element in
         guard let item = element as? [String: Any] else {
-            throw ApplePayConfigurationError.invalidArrayElement(field: "paymentSummaryItems", index: index)
+            throw ApplePayConfigurationError.invalidArrayElement(field: field, index: index)
         }
         guard
             let label = item["label"] as? String,
@@ -240,14 +257,15 @@ private func mapSummaryItems(from items: [Any]) throws -> [PKPaymentSummaryItem]
             let type = summaryItemType(from: item["type"]),
             index < items.count - 1 || amount.compare(NSDecimalNumber.zero) == .orderedDescending
         else {
-            throw ApplePayConfigurationError.invalidSummaryItem(index: index)
+            throw ApplePayConfigurationError.invalidSummaryItem(field: field, index: index)
         }
         return PKPaymentSummaryItem(label: label, amount: amount, type: type)
     }
 }
 
-private func mapShippingMethods(from items: [Any]) throws -> (methods: [PKShippingMethod], amounts: [String: String]) {
+private func mapShippingMethods(from items: [Any]) throws -> (methods: [PKShippingMethod], amounts: [String: String], summaries: [String: [PKPaymentSummaryItem]]) {
     var amounts: [String: String] = [:]
+    var summaries: [String: [PKPaymentSummaryItem]] = [:]
     let methods = try items.enumerated().map { index, element -> PKShippingMethod in
         guard let item = element as? [String: Any] else {
             throw ApplePayConfigurationError.invalidArrayElement(field: "shippingMethods", index: index)
@@ -261,13 +279,17 @@ private func mapShippingMethods(from items: [Any]) throws -> (methods: [PKShippi
         else {
             throw ApplePayConfigurationError.invalidShippingMethod(index: index)
         }
+        guard let items = item["paymentSummaryItems"] as? [Any] else {
+            throw ApplePayConfigurationError.invalidJSON(field: "shippingMethods[\(index)].paymentSummaryItems", expected: "array")
+        }
+        summaries[identifier] = try mapSummaryItems(from: items, field: "shippingMethods[\(index)].paymentSummaryItems")
         let method = PKShippingMethod(label: label, amount: amount, type: type)
         method.identifier = identifier
         method.detail = item["detail"] as? String
         amounts[identifier] = item["amount"] as? String
         return method
     }
-    return (methods, amounts)
+    return (methods, amounts, summaries)
 }
 
 private func mapShippingType(from value: String?) throws -> PKShippingType? {

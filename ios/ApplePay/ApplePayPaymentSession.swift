@@ -33,7 +33,12 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
                 return
             }
             self.requestOptions.apply(to: paymentRequest)
-            self.present(paymentRequest)
+            do {
+                try self.requestOptions.validateAmounts(currencyCode: paymentRequest.currencyCode)
+                self.present(paymentRequest)
+            } catch {
+                self.finish(with: applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: error.localizedDescription))
+            }
         }
     }
 
@@ -65,12 +70,7 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
         handler completion: @escaping (PKPaymentRequestShippingMethodUpdate) -> Void
     ) {
         do {
-            summaryItems = try prepareApplePaySummaryItems(
-                summaryItems: requestOptions.paymentSummaryItems,
-                defaultShippingMethod: requestOptions.shippingMethods.first,
-                selectedShippingMethod: shippingMethod,
-                shippingSummaryItemIndex: requestOptions.shippingSummaryItemIndex
-            )
+            summaryItems = try requestOptions.summaryItems(for: shippingMethod)
             completion(PKPaymentRequestShippingMethodUpdate(paymentSummaryItems: summaryItems))
         } catch {
             let update = PKPaymentRequestShippingMethodUpdate(paymentSummaryItems: summaryItems)
@@ -89,14 +89,19 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
         applePayClient.tokenize(payment) { cardNonce, error in
             guard self.resultHandler.isActive else { return }
             if let cardNonce = cardNonce {
-                self.resultHandler.recordSuccess(prepareBTApplePayNonceResult(
-                    cardNonce: cardNonce,
-                    payment: payment,
-                    shippingMethodAmounts: self.requestOptions.shippingMethodAmounts,
-                    authorizedTotal: authorizedTotal,
-                    currencyCode: self.currencyCode
-                ).toSwiftDict())
-                completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
+                do {
+                    self.resultHandler.recordSuccess(try prepareBTApplePayNonceResult(
+                        cardNonce: cardNonce,
+                        payment: payment,
+                        shippingMethodAmounts: self.requestOptions.shippingMethodAmounts,
+                        authorizedTotal: authorizedTotal,
+                        currencyCode: self.currencyCode
+                    ).toSwiftDict())
+                    completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
+                } catch {
+                    self.resultHandler.recordFailure(error.localizedDescription)
+                    completion(PKPaymentAuthorizationResult(status: .failure, errors: nil))
+                }
             } else {
                 self.resultHandler.recordFailure(error?.localizedDescription ?? "Braintree returned neither a nonce nor an error")
                 completion(PKPaymentAuthorizationResult(status: .failure, errors: error.map { [$0] }))

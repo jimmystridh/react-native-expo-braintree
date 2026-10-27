@@ -9,6 +9,14 @@ import XCTest
         return try prepareApplePayRequestOptions(options: values)
     }
 
+    private func method(_ identifier: String, amount: String = "1.00", total: String = "4.00") -> [String: Any] {
+        ["identifier": identifier, "label": identifier, "amount": amount, "paymentSummaryItems": [["label": "Merchant", "amount": total]]]
+    }
+
+    private func json(_ value: Any) throws -> String {
+        String(data: try JSONSerialization.data(withJSONObject: value), encoding: .utf8)!
+    }
+
     func testApplicationDataAlwaysUsesTheOriginalUTF8Bytes() throws {
         for text in ["order123", "test", "SGVsbG8=", "påse", ""] {
             XCTAssertEqual(try request(["applicationData": text]).applicationData, Data(text.utf8))
@@ -53,14 +61,23 @@ import XCTest
 
     func testInvalidExplicitCountryAndCurrencyCodesAreRejected() {
         for (field, codes) in [
-            ("countryCode", ["", " ", "USA", "us", "ZZ", "U1"]),
-            ("currencyCode", ["", " ", "US", "usd", "ZZZ", "U1D"]),
+            ("countryCode", ["USA", "us", "ZZ", "U1"]),
+            ("currencyCode", ["US", "usd", "ZZZ", "U1D"]),
         ] {
             for code in codes {
                 XCTAssertThrowsError(try request([field: code]), code) { error in
                     XCTAssertTrue(error.localizedDescription.contains(field))
                 }
             }
+        }
+    }
+
+    func testBlankOverridesConsistentlyUseGatewayDefaults() throws {
+        for value in ["", " ", "\t\n"] {
+            let options = try request(["merchantIdentifier": value, "countryCode": value, "currencyCode": value])
+            XCTAssertNil(options.merchantIdentifier)
+            XCTAssertNil(options.countryCode)
+            XCTAssertNil(options.currencyCode)
         }
     }
 
@@ -80,51 +97,51 @@ import XCTest
         XCTAssertEqual(options.paymentSummaryItems[1].amount, NSDecimalNumber(string: "7.50"))
     }
 
-    func testInvalidShippingMethodsAreRejectedInsteadOfChangingTheDefault() {
-        for badMethod in [
-            "{\"identifier\":\"\",\"label\":\"Invalid\",\"amount\":\"1.00\"}",
-            "{\"identifier\":\"first\",\"label\":\" \",\"amount\":\"1.00\"}",
-            "{\"identifier\":\"first\",\"label\":\"Invalid\",\"amount\":\"4.00abc\"}",
-            "{\"identifier\":\"first\",\"label\":\"Invalid\",\"amount\":\"-3.00\"}",
-            "null",
-        ] {
-            let methods = "[\(badMethod),{\"identifier\":\"second\",\"label\":\"Valid\",\"amount\":\"7.50\"}]"
-            XCTAssertThrowsError(try request(["shippingMethods": methods])) { error in
+    func testInvalidShippingMethodsAreRejectedInsteadOfChangingTheDefault() throws {
+        for (field, value) in [("identifier", ""), ("label", " "), ("amount", "4.00abc"), ("amount", "-3.00")] {
+            var invalid = method("first")
+            invalid[field] = value
+            XCTAssertThrowsError(try request(["shippingMethods": json([invalid, method("second")])])) { error in
                 XCTAssertTrue(error.localizedDescription.contains("shippingMethods[0]"))
             }
         }
+        XCTAssertThrowsError(try request(["shippingMethods": json([NSNull(), method("second")])]))
     }
 
-    func testShippingOptionsThatCanInvalidateTheTotalAreRejectedBeforePresentation() {
-        XCTAssertThrowsError(try request([
-            "shippingMethods": "[{\"identifier\":\"standard\",\"label\":\"Standard\",\"amount\":\"4.00\"},{\"identifier\":\"free\",\"label\":\"Pickup\",\"amount\":\"0.00\"}]",
-        ])) { error in
+    func testEveryShippingChoiceNeedsAPositiveCompleteSummary() throws {
+        for total in ["0.00", "-1.00"] {
+            XCTAssertThrowsError(try request(["shippingMethods": json([method("first"), method("second", total: total)])])) { error in
+                XCTAssertTrue(error.localizedDescription.contains("shippingMethods[1].paymentSummaryItems"))
+            }
+        }
+        var incomplete = method("first")
+        incomplete.removeValue(forKey: "paymentSummaryItems")
+        XCTAssertThrowsError(try request(["shippingMethods": json([incomplete])]))
+    }
+
+    func testInitialSummaryMustMatchTheFirstShippingMethod() throws {
+        XCTAssertThrowsError(try request(["shippingMethods": json([method("first", total: "5.00")])])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("must match the first shipping method"))
+        }
+    }
+
+    func testGatewayCurrencyAlsoValidatesEveryShippingSummary() throws {
+        let options = try request(["shippingMethods": json([method("first"), method("second", total: "4.005")])])
+        XCTAssertThrowsError(try options.validateAmounts(currencyCode: "USD")) { error in
+            XCTAssertTrue(error.localizedDescription.contains("shippingMethods[1].paymentSummaryItems[0]"))
+        }
+    }
+
+    func testObsoleteShippingIndexIsRejectedWithMigrationInstructions() throws {
+        XCTAssertThrowsError(try request(["shippingSummaryItemIndex": "0"])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("supply paymentSummaryItems for each shipping method"))
+        }
+    }
+
+    func testDuplicateShippingIdentifiersAreRejected() throws {
+        XCTAssertThrowsError(try request(["shippingMethods": json([method("same"), method("same")])])) { error in
             XCTAssertTrue(error.localizedDescription.contains("shippingMethods[1]"))
         }
-    }
-
-    func testShippingSummaryIndexMustIdentifyTheInitialShippingAmount() throws {
-        let base = [
-            "paymentSummaryItems": "[{\"label\":\"Shipping\",\"amount\":\"2.10\"},{\"label\":\"Merchant\",\"amount\":\"12.10\"}]",
-            "shippingMethods": "[{\"identifier\":\"standard\",\"label\":\"Standard\",\"amount\":\"2.10\"}]",
-        ]
-        for index in ["-1", "1", "2", "0.5", "null"] {
-            var options = base
-            options["shippingSummaryItemIndex"] = index
-            XCTAssertThrowsError(try request(options), index)
-        }
-        var valid = base
-        valid["shippingSummaryItemIndex"] = "0"
-        XCTAssertEqual(try request(valid).shippingSummaryItemIndex, 0)
-        valid["shippingMethods"] = "[]"
-        XCTAssertThrowsError(try request(valid))
-        valid["shippingMethods"] = "[{\"identifier\":\"standard\",\"label\":\"Standard\",\"amount\":\"1.00\"}]"
-        XCTAssertThrowsError(try request(valid))
-    }
-
-    func testDuplicateShippingIdentifiersAreRejected() {
-        let methods = "[{\"identifier\":\"same\",\"label\":\"First\",\"amount\":\"1.00\"},{\"identifier\":\"same\",\"label\":\"Second\",\"amount\":\"7.50\"}]"
-        XCTAssertThrowsError(try request(["shippingMethods": methods]))
     }
 
     func testBadStringArrayElementsReportTheirPosition() {
@@ -157,15 +174,13 @@ import XCTest
 
     func testShippingAmountFormattingSurvivesPassKitCopies() throws {
         for text in ["7.50", "0.00", "07.500"] {
-            let options = try request([
-                "shippingMethods": "[{\"identifier\":\"standard\",\"label\":\"Shipping\",\"amount\":\"\(text)\"}]",
-            ])
+            let options = try request(["shippingMethods": json([method("standard", amount: text)])])
             let returnedMethod = PKShippingMethod(label: "Shipping", amount: options.shippingMethods[0].amount)
             returnedMethod.identifier = "standard"
             let payment = AuthorizedPayment()
             payment.selectedShippingMethod = returnedMethod
 
-            let details = prepareApplePayPaymentDetails(payment, shippingMethodAmounts: options.shippingMethodAmounts)
+            let details = try prepareApplePayPaymentDetails(payment, shippingMethodAmounts: options.shippingMethodAmounts)
             XCTAssertEqual((details["shippingMethod"] as? [String: String])?["amount"], text)
         }
     }

@@ -1,16 +1,18 @@
 import Foundation
 import PassKit
 
-func validatedApplePayRegionCode(_ value: String?, field: String) throws -> String? {
-    guard let value = value else { return nil }
-    let isCountry = field == "countryCode"
-    let pattern = isCountry ? #"\A[A-Z]{2}\z"# : #"\A[A-Z]{3}\z"#
-    let codes = isCountry ? Locale.isoRegionCodes : Locale.isoCurrencyCodes
-    guard value.range(of: pattern, options: .regularExpression) != nil, codes.contains(value) else {
-        throw ApplePayConfigurationError.invalidValue(
-            field: field,
-            expected: isCountry ? "must be a two-letter uppercase ISO 3166 country code" : "must be a three-letter uppercase ISO 4217 currency code"
-        )
+func validatedApplePayCountryCode(_ value: String?) throws -> String? {
+    guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
+    guard value.range(of: #"\A[A-Z]{2}\z"#, options: .regularExpression) != nil, Locale.isoRegionCodes.contains(value) else {
+        throw ApplePayConfigurationError.invalidValue(field: "countryCode", expected: "must be a two-letter uppercase ISO 3166 country code")
+    }
+    return value
+}
+
+func validatedApplePayCurrencyCode(_ value: String?) throws -> String? {
+    guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
+    guard applePayCurrencyScale(value) != nil else {
+        throw ApplePayConfigurationError.invalidValue(field: "currencyCode", expected: "must be an uppercase ISO 4217 currency code with a defined minor unit")
     }
     return value
 }
@@ -28,8 +30,13 @@ func applePayPaymentRequestError(
         return applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: "No supportedNetworks were passed and none are configured for Apple Pay in the Braintree gateway")
     }
     do {
-        _ = try validatedApplePayRegionCode(paymentRequest.countryCode, field: "countryCode")
-        _ = try validatedApplePayRegionCode(paymentRequest.currencyCode, field: "currencyCode")
+        guard try validatedApplePayCountryCode(paymentRequest.countryCode) == paymentRequest.countryCode else {
+            throw ApplePayConfigurationError.invalidValue(field: "countryCode", expected: "must resolve to a canonical uppercase ISO country code")
+        }
+        guard try validatedApplePayCurrencyCode(paymentRequest.currencyCode) == paymentRequest.currencyCode else {
+            throw ApplePayConfigurationError.invalidValue(field: "currencyCode", expected: "must resolve to a canonical uppercase ISO currency code")
+        }
+        try validateApplePayAmounts(paymentRequest.paymentSummaryItems, shippingMethods: paymentRequest.shippingMethods ?? [], currencyCode: paymentRequest.currencyCode)
     } catch {
         return applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: error.localizedDescription)
     }
@@ -37,12 +44,4 @@ func applePayPaymentRequestError(
         return applePayErrorResult(.APPLE_PAY_NOT_AVAILABLE_ERROR, nativeError: "No card in Wallet matches the supported networks and merchant capabilities")
     }
     return nil
-}
-
-func applePayErrorResult(
-    _ message: ERROR_TYPES,
-    code: EXCEPTION_TYPES = .SWIFT_EXCEPTION,
-    nativeError: String
-) -> Dictionary<String, String> {
-    return ["error": "true", "code": code.rawValue, "message": message.rawValue, "domain": message.rawValue, "nativeError": nativeError]
 }

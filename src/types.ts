@@ -340,6 +340,11 @@ export type BTApplePayShippingMethod = BTApplePaySummaryItem & {
   detail?: string;
 };
 
+export type BTApplePayShippingOption = BTApplePayShippingMethod & {
+  /** Complete summary shown for this method, ending with its positive grand total */
+  paymentSummaryItems: BTApplePaySummaryItem[];
+};
+
 export type BTApplePayPostalAddress = {
   street?: string;
   line1?: string;
@@ -383,14 +388,11 @@ export type RequestApplePayOptions = {
   requiredBillingContactFields?: BTApplePayContactField[];
   requiredShippingContactFields?: BTApplePayContactField[];
   /**
-   * The first method is selected initially; its cost must be included in the
-   * paymentSummaryItems total. Selecting another method adjusts that total by
-   * the price difference. An itemized shipping line must match the first
-   * method's label and amount to be updated as well.
+   * Each method supplies its complete summary. The top-level summary must
+   * match the first method, which is selected initially. Selecting a method
+   * replaces the whole summary without inferring lines or calculating prices.
    */
-  shippingMethods?: BTApplePayShippingMethod[];
-  /** Index of the shipping summary line before the total; its amount must match the first method */
-  shippingSummaryItemIndex?: number;
+  shippingMethods?: BTApplePayShippingOption[];
   billingContact?: BTApplePayContact;
   shippingContact?: BTApplePayContact;
   shippingType?: BTApplePayShippingType;

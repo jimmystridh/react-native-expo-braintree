@@ -174,11 +174,34 @@ The promise resolves after the sheet is dismissed and the native session is rele
 
 `applicationData` is always encoded as UTF-8. Strings such as `order123`, `test`, and `SGVsbG8=` are used literally, never base64-decoded. When verifying Apple's application-data hash on your server, hash the UTF-8 bytes of the same string.
 
-Amounts must be decimal strings without grouping separators, exponents, whitespace, or trailing characters. Discount line items may be negative; the grand total must be positive and shipping prices must be non-negative. Malformed JSON, invalid list elements, and invalid shipping methods return `APPLE_PAY_CONFIGURATION_ERROR` with the field or item index instead of silently changing the request. Unknown contact fields, merchant capabilities, shipping types, and network names are rejected too. Use the documented option names (for example, `email` and `phone`, rather than `emailAddress` and `phoneNumber`). The `3ds` capability is always retained when other merchant capabilities are supplied. Explicit country and currency codes must be recognized uppercase ISO codes, such as `US` and `USD`.
+Amounts must be decimal strings without grouping separators, exponents, whitespace, or trailing characters. Discount line items may be negative; the grand total must be positive and shipping prices must be non-negative. Malformed JSON, invalid list elements, and invalid shipping methods return `APPLE_PAY_CONFIGURATION_ERROR` with the field or item index instead of silently changing the request. Unknown contact fields, merchant capabilities, shipping types, and network names are rejected too. Use the documented option names (for example, `email` and `phone`, rather than `emailAddress` and `phoneNumber`). The `3ds` capability is always retained when other merchant capabilities are supplied. Nonblank country and currency overrides must be recognized uppercase ISO codes, such as `US` and `USD`. Blank merchant, country, and currency overrides consistently use gateway defaults. Amounts must be exact in the currency's ISO 4217 minor units: USD `4.005` and JPY `100.5` are rejected, while KWD `4.005` is valid. Extra trailing zeros do not change the value. The minor-unit table follows [SIX List One, published 2026-09-17](https://www.six-group.com/en/products-services/financial-information/market-reference-data/data-standards.html).
 
-To offer shipping choices, pass `shippingMethods` and include the first method's cost in the initial `paymentSummaryItems` total. The first method is selected by default. Selecting a different method updates the total by the price difference, including when switching back to the first method. For a separate shipping summary line, set `shippingSummaryItemIndex` to its zero-based position before the grand total. That line must initially match the first method's amount; its label can be `Shipping` even when the method is called `Standard`. Without the index, a line is updated only when its label and amount exactly match the first method. Every configured shipping choice must leave a positive total; invalid configurations are rejected before presenting the sheet, and totals are checked again on selection. Prices are fixed per method; address-based shipping rates and tax recalculation are not supported.
+Each shipping method must provide its complete `paymentSummaryItems`, including its positive grand total. The top-level `paymentSummaryItems` must match the first method's list, which Wallet displays initially. Selecting another method replaces the complete list; the library does not infer shipping lines, apply price differences, or calculate tax. This lets methods use different shipping labels, discounts, and taxes. All lists and prices are validated against the resolved currency before the sheet is presented. Use server-priced summaries for each method and verify the selected method and authorized total on your server. These choices stay fixed during the sheet: editing a shipping address does not recalculate rates or tax. Address-based repricing needs a separate callback/quote API and is not supported by this method.
 
-Request the fulfillment details you need with `requiredShippingContactFields` (for example, `['name', 'postalAddress', 'email', 'phone']`). The successful result includes `billingContact`, `shippingContact`, and `shippingMethod` when Wallet provides them. Contacts use the same shape as the input contacts, with postal street lines joined by `\n` in `postalAddress.street`; the selected shipping method retains its configured amount string, including trailing zeros. The result also includes `authorizedTotal: { amount, currencyCode }`, containing the final total displayed for authorization after shipping changes. Check this amount against the order on your server before charging. `cardNetwork` follows card tokenization casing, such as `Visa`, `MasterCard`, and `Amex`, while `supportedNetworks` uses option names such as `visa`, `masterCard`, and `amex`. The field is omitted when Wallet supplies no network.
+```typescript
+const standardSummary = [
+  { label: 'Goods', amount: '10.00' },
+  { label: 'Shipping', amount: '2.10' },
+  { label: 'Example Inc.', amount: '12.10' },
+];
+const shippingMethods = [
+  {
+    identifier: 'standard', label: 'Standard', amount: '2.10',
+    paymentSummaryItems: standardSummary,
+  },
+  {
+    identifier: 'express', label: 'Express', amount: '7.25',
+    paymentSummaryItems: [
+      { label: 'Goods', amount: '10.00' },
+      { label: 'Postage', amount: '7.25' },
+      { label: 'Example Inc.', amount: '17.25' },
+    ],
+  },
+];
+// Pass paymentSummaryItems: standardSummary and shippingMethods to checkout.
+```
+
+Request the fulfillment details you need with `requiredShippingContactFields` (for example, `['name', 'postalAddress', 'email', 'phone']`). The successful result includes `billingContact`, `shippingContact`, and `shippingMethod` when Wallet provides them. Contacts use the same shape as the input contacts, with postal street lines joined by `\n` in `postalAddress.street`; the selected shipping method retains its configured amount string, including trailing zeros. The result also includes `authorizedTotal: { amount, currencyCode }`, containing the final total displayed for authorization after shipping changes. Its amount uses fixed currency precision, for example USD `5.00`, JPY `100`, or KWD `4.005`. Check the currency and decimal amount against the order on your server before charging; compare decimal values rather than arbitrary input-string formatting. `cardNetwork` follows card tokenization casing, such as `Visa`, `MasterCard`, and `Amex`, while `supportedNetworks` uses option names such as `visa`, `masterCard`, and `amex`. The field is omitted when Wallet supplies no network.
 
 The iOS Simulator can present the Apple Pay sheet with simulated cards and return dummy payment data, as described in [Apple's authorization guide](https://developer.apple.com/library/archive/ApplePay_Guide/Authorization.html). Use it to exercise the sheet and delegate callbacks. Validate the complete Braintree tokenization flow on an Apple Pay-capable physical device with an Apple Pay sandbox test card; see [Braintree's testing guide](https://developer.paypal.com/braintree/docs/guides/apple-pay/testing-go-live).
 

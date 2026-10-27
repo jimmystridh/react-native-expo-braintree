@@ -20,98 +20,37 @@ final class AuthorizedPayment: PKPayment {
         return method
     }
 
-    func testShippingSelectionUpdatesTotalWithoutAccumulatingCharges() throws {
-        let standard = shippingMethod("Standard", amount: "2.10")
-        let express = shippingMethod("Express", amount: "7.25")
-        let free = shippingMethod("Pickup", amount: "0.00")
-        let items = [
-            PKPaymentSummaryItem(label: "Goods", amount: NSDecimalNumber(string: "10.00")),
-            PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "12.10")),
+    private func shippingOptions() throws -> ApplePayRequestOptions {
+        let initial = [["label": "Goods", "amount": "10.00"], ["label": "Shipping", "amount": "2.10"], ["label": "Merchant", "amount": "12.10"]]
+        let express = [["label": "Goods", "amount": "10.00"], ["label": "Postage", "amount": "7.25"], ["label": "Merchant", "amount": "17.25"]]
+        let methods: [[String: Any]] = [
+            ["identifier": "standard", "label": "Standard", "amount": "2.10", "paymentSummaryItems": initial],
+            ["identifier": "express", "label": "Express", "amount": "7.25", "paymentSummaryItems": express],
         ]
+        return try prepareApplePayRequestOptions(options: [
+            "paymentSummaryItems": String(data: JSONSerialization.data(withJSONObject: initial), encoding: .utf8)!,
+            "shippingMethods": String(data: JSONSerialization.data(withJSONObject: methods), encoding: .utf8)!,
+        ])
+    }
 
-        for (method, expectedTotal) in [(express, "17.25"), (express, "17.25"), (free, "10.00"), (standard, "12.10")] {
-            let updated = try prepareApplePaySummaryItems(
-                summaryItems: items, defaultShippingMethod: standard, selectedShippingMethod: method
-            )
-            XCTAssertEqual(updated.last?.amount, NSDecimalNumber(string: expectedTotal))
-            XCTAssertEqual(updated.last?.label, "Merchant")
-            XCTAssertEqual(updated.first?.amount, NSDecimalNumber(string: "10.00"))
+    func testShippingSelectionUsesCompleteSummariesWithoutAccumulatingCharges() throws {
+        let options = try shippingOptions()
+        for (index, expected) in [(1, "17.25"), (1, "17.25"), (0, "12.10")] {
+            let selected = try options.summaryItems(for: options.shippingMethods[index])
+            XCTAssertEqual(selected.last?.amount, NSDecimalNumber(string: expected))
+            XCTAssertEqual(selected[1].label, index == 0 ? "Shipping" : "Postage")
         }
-        XCTAssertEqual(items.last?.amount, NSDecimalNumber(string: "12.10"))
+        XCTAssertEqual(options.paymentSummaryItems.last?.amount, NSDecimalNumber(string: "12.10"))
     }
 
-    func testShippingSelectionReplacesItemizedShippingAndPreservesOtherItems() throws {
-        let standard = shippingMethod("Standard", amount: "2.10")
-        let express = shippingMethod("Express", amount: "7.25")
-        let items = [
-            PKPaymentSummaryItem(label: "Goods", amount: NSDecimalNumber(string: "10.00"), type: .pending),
-            PKPaymentSummaryItem(label: "Standard", amount: standard.amount),
-            PKPaymentSummaryItem(label: "Discount", amount: NSDecimalNumber(string: "-1.00")),
-            PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "11.10")),
-        ]
-        let updated = try prepareApplePaySummaryItems(
-            summaryItems: items, defaultShippingMethod: standard, selectedShippingMethod: express
-        )
-
-        XCTAssertEqual(updated.map { $0.label }, ["Goods", "Express", "Discount", "Merchant"])
-        XCTAssertEqual(updated[1].amount, express.amount)
-        XCTAssertEqual(updated.last?.amount, NSDecimalNumber(string: "16.25"))
-        XCTAssertEqual(updated[0].type, .pending)
-        XCTAssertEqual(updated[2].amount, NSDecimalNumber(string: "-1.00"))
-        XCTAssertEqual(items[1].amount, standard.amount)
-    }
-
-    func testShippingSelectionSupportsTotalOnlyAndNoConfiguredMethods() throws {
-        let total = PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "12.10"))
-        let standard = shippingMethod("Standard", amount: "2.10")
-        let express = shippingMethod("Express", amount: "7.25")
-        let updated = try prepareApplePaySummaryItems(
-            summaryItems: [total], defaultShippingMethod: standard, selectedShippingMethod: express
-        )
-        XCTAssertEqual(updated.count, 1)
-        XCTAssertEqual(updated[0].amount, NSDecimalNumber(string: "17.25"))
-
-        let unchanged = try prepareApplePaySummaryItems(
-            summaryItems: [total], defaultShippingMethod: nil, selectedShippingMethod: express
-        )
-        XCTAssertEqual(unchanged[0].amount, total.amount)
-    }
-
-    func testShippingSelectionsCannotProduceANonpositiveTotal() {
-        let standard = shippingMethod("Standard", amount: "10.00")
-        let free = shippingMethod("Free", amount: "0.00")
-        for amount in ["4.00", "10.00"] {
-            let items = [PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: amount))]
-            XCTAssertThrowsError(try prepareApplePaySummaryItems(
-                summaryItems: items, defaultShippingMethod: standard, selectedShippingMethod: free
-            ))
-        }
-    }
-
-    func testExplicitShippingLineKeepsItsLabelWhenTheMethodHasAnotherName() throws {
-        let standard = shippingMethod("Standard", amount: "2.10")
-        let express = shippingMethod("Express", amount: "7.25")
-        let items = [
-            PKPaymentSummaryItem(label: "Shipping", amount: standard.amount),
-            PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "12.10")),
-        ]
-        let updated = try prepareApplePaySummaryItems(
-            summaryItems: items, defaultShippingMethod: standard, selectedShippingMethod: express,
-            shippingSummaryItemIndex: 0
-        )
-        XCTAssertEqual(updated[0].label, "Shipping")
-        XCTAssertEqual(updated[0].amount, express.amount)
-        XCTAssertEqual(updated[1].amount, NSDecimalNumber(string: "17.25"))
+    func testUnknownShippingSelectionIsRejected() throws {
+        XCTAssertThrowsError(try shippingOptions().summaryItems(for: shippingMethod("unknown", amount: "0.00")))
     }
 
     func testAuthorizedTotalUsesTheFinalShippingSelectionAndCurrency() throws {
-        let standard = shippingMethod("Standard", amount: "2.10")
-        let express = shippingMethod("Express", amount: "7.25")
-        let items = try prepareApplePaySummaryItems(
-            summaryItems: [PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "12.10"))],
-            defaultShippingMethod: standard, selectedShippingMethod: express
-        )
-        let details = prepareApplePayPaymentDetails(AuthorizedPayment(), authorizedTotal: items.last, currencyCode: "USD")
+        let options = try shippingOptions()
+        let items = try options.summaryItems(for: options.shippingMethods[1])
+        let details = try prepareApplePayPaymentDetails(AuthorizedPayment(), authorizedTotal: items.last, currencyCode: "USD")
         XCTAssertEqual(details["authorizedTotal"] as? [String: String], ["amount": "17.25", "currencyCode": "USD"])
     }
 
@@ -144,7 +83,7 @@ final class AuthorizedPayment: PKPayment {
         payment.selectedShippingContact = contact
         payment.selectedShippingMethod = method
 
-        let details = prepareApplePayPaymentDetails(payment)
+        let details = try prepareApplePayPaymentDetails(payment)
         let encoded = try JSONSerialization.data(withJSONObject: details)
         let decoded = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         let serializedContact = try XCTUnwrap(decoded["shippingContact"] as? [String: Any])
@@ -166,14 +105,14 @@ final class AuthorizedPayment: PKPayment {
         ])
     }
 
-    func testAbsentDetailsAreOmittedAndPendingShippingAmountRemainsAString() {
+    func testAbsentDetailsAreOmittedAndPendingShippingAmountRemainsAString() throws {
         let payment = AuthorizedPayment()
-        XCTAssertTrue(prepareApplePayPaymentDetails(payment).isEmpty)
+        XCTAssertTrue(try prepareApplePayPaymentDetails(payment).isEmpty)
 
         let method = PKShippingMethod(label: "Pending", amount: NSDecimalNumber.zero, type: .pending)
         method.identifier = "pending"
         payment.selectedShippingMethod = method
-        let details = prepareApplePayPaymentDetails(payment)
+        let details = try prepareApplePayPaymentDetails(payment)
         XCTAssertNil(details["billingContact"])
         XCTAssertNil(details["shippingContact"])
         XCTAssertEqual(details["shippingMethod"] as? [String: String], [
@@ -190,6 +129,7 @@ final class AuthorizedPayment: PKPayment {
         request.merchantCapabilities = [.threeDSecure, .debit]
         request.countryCode = "US"
         request.currencyCode = "USD"
+        request.paymentSummaryItems = [PKPaymentSummaryItem(label: "Merchant", amount: 10)]
         return request
     }
 
@@ -224,8 +164,8 @@ final class AuthorizedPayment: PKPayment {
 
     func testInvalidGatewayRegionCodesAreRejectedBeforeCheckingWallet() {
         for (field, codes) in [
-            ("countryCode", ["", "USA", "us", "ZZ"]),
-            ("currencyCode", ["", "US", "usd", "ZZZ"]),
+            ("countryCode", ["", "USA", "us", "ZZ", " US "]),
+            ("currencyCode", ["", "US", "usd", "ZZZ", " USD "]),
         ] {
             for code in codes {
                 let request = paymentRequest()
@@ -274,5 +214,6 @@ suite.addTest(XCTestSuite(forTestCaseClass: ApplePayPaymentDetailsTests.self))
 suite.addTest(XCTestSuite(forTestCaseClass: ApplePayValidationTests.self))
 suite.addTest(XCTestSuite(forTestCaseClass: ApplePayRequestOptionsTests.self))
 suite.addTest(XCTestSuite(forTestCaseClass: ApplePayResultHandlerTests.self))
+suite.addTest(XCTestSuite(forTestCaseClass: ApplePayAmountsTests.self))
 suite.run()
 exit(suite.testRun?.hasSucceeded == true ? 0 : 1)

@@ -8,7 +8,7 @@ func prepareBTApplePayNonceResult(
     shippingMethodAmounts: [String: String],
     authorizedTotal: PKPaymentSummaryItem?,
     currencyCode: String?
-) -> NSDictionary {
+) throws -> NSDictionary {
     let result = NSMutableDictionary()
     result["nonce"] = cardNonce.nonce
     result["type"] = cardNonce.type
@@ -17,7 +17,7 @@ func prepareBTApplePayNonceResult(
     if let network = applePayNetworkName(payment.token.paymentMethod.network) {
         result["cardNetwork"] = network
     }
-    result.addEntries(from: prepareApplePayPaymentDetails(
+    result.addEntries(from: try prepareApplePayPaymentDetails(
         payment, shippingMethodAmounts: shippingMethodAmounts,
         authorizedTotal: authorizedTotal, currencyCode: currencyCode
     ))
