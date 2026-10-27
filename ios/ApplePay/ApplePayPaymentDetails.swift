@@ -26,7 +26,7 @@ func prepareApplePaySummaryItems(
     return updatedItems
 }
 
-func prepareApplePayPaymentDetails(_ payment: PKPayment) -> [String: Any] {
+func prepareApplePayPaymentDetails(_ payment: PKPayment, shippingMethodAmounts: [String: String] = [:]) -> [String: Any] {
     var result: [String: Any] = [:]
     if let billingContact = payment.billingContact {
         result["billingContact"] = prepareApplePayContact(billingContact)
@@ -37,7 +37,7 @@ func prepareApplePayPaymentDetails(_ payment: PKPayment) -> [String: Any] {
     if let shippingMethod = payment.shippingMethod {
         var method = [
             "label": shippingMethod.label,
-            "amount": shippingMethod.amount.stringValue,
+            "amount": shippingMethod.identifier.flatMap { shippingMethodAmounts[$0] } ?? shippingMethod.amount.stringValue,
             "type": shippingMethod.type == .pending ? "pending" : "final",
         ]
         method["identifier"] = shippingMethod.identifier

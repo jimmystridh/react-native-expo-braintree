@@ -170,9 +170,13 @@ if ('nonce' in result) {
 ```
 Implementation inside [requestApplePayPayment](src/index.tsx).
 
+`applicationData` is always encoded as UTF-8. Strings such as `order123`, `test`, and `SGVsbG8=` are used literally, never base64-decoded. When verifying Apple's application-data hash on your server, hash the UTF-8 bytes of the same string.
+
+Amounts must be decimal strings without grouping separators, exponents, whitespace, or trailing characters. Discount line items may be negative; the grand total must be positive and shipping prices must be non-negative. Malformed JSON, invalid list elements, and invalid shipping methods return `APPLE_PAY_CONFIGURATION_ERROR` with the field or item index instead of silently changing the request. The `3ds` capability is always retained when other merchant capabilities are supplied.
+
 To offer shipping choices, pass `shippingMethods` and include the first method's cost in the initial `paymentSummaryItems` total. The first method is selected by default. Selecting a different method updates the total by the price difference, including when switching back to the first method. If you show a separate shipping summary line, use the first method's exact label and amount so that line also updates. Prices are fixed per method; address-based shipping rates and tax recalculation are not supported.
 
-Request the fulfillment details you need with `requiredShippingContactFields` (for example, `['name', 'postalAddress', 'email', 'phone']`). The successful result includes `billingContact`, `shippingContact`, and `shippingMethod` when Wallet provides them. Contacts use the same shape as the input contacts, with postal street lines joined by `\n` in `postalAddress.street`; shipping method amounts are decimal strings.
+Request the fulfillment details you need with `requiredShippingContactFields` (for example, `['name', 'postalAddress', 'email', 'phone']`). The successful result includes `billingContact`, `shippingContact`, and `shippingMethod` when Wallet provides them. Contacts use the same shape as the input contacts, with postal street lines joined by `\n` in `postalAddress.street`; the selected shipping method retains its configured amount string, including trailing zeros. Known card networks use the same names as `supportedNetworks`, such as `amex` and `masterCard`; `cardNetwork` is omitted when Wallet supplies no network.
 
 The iOS Simulator can present the Apple Pay sheet with simulated cards and return dummy payment data, as described in [Apple's authorization guide](https://developer.apple.com/library/archive/ApplePay_Guide/Authorization.html). Use it to exercise the sheet and delegate callbacks. Validate the complete Braintree tokenization flow on an Apple Pay-capable physical device with an Apple Pay sandbox test card; see [Braintree's testing guide](https://developer.paypal.com/braintree/docs/guides/apple-pay/testing-go-live).
 

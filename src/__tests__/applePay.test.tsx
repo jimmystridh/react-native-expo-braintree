@@ -22,6 +22,7 @@ jest.mock('react-native-nitro-modules', () => ({
 
 const options: RequestApplePayOptions = {
   clientToken: 'sandbox_token',
+  applicationData: 'order123',
   merchantIdentifier: 'merchant.com.example',
   supportedNetworks: ['visa', 'masterCard'],
   paymentSummaryItems: [
@@ -44,6 +45,7 @@ describe('requestApplePayPayment', () => {
 
     expect(mockRequestApplePayPayment).toHaveBeenCalledWith({
       clientToken: 'sandbox_token',
+      applicationData: 'order123',
       merchantIdentifier: 'merchant.com.example',
       supportedNetworks: '["visa","masterCard"]',
       paymentSummaryItems:
@@ -58,7 +60,7 @@ describe('requestApplePayPayment', () => {
       type: 'ApplePayCard',
       isDefault: 'false',
       isDeviceToken: 'true',
-      cardNetwork: 'Visa',
+      cardNetwork: 'visa',
       binData: '{"prepaid":"No","debit":"Yes"}',
     });
 
@@ -67,7 +69,7 @@ describe('requestApplePayPayment', () => {
       type: 'ApplePayCard',
       isDefault: false,
       isDeviceToken: true,
-      cardNetwork: 'Visa',
+      cardNetwork: 'visa',
       binData: { prepaid: 'No', debit: 'Yes' },
     });
   });

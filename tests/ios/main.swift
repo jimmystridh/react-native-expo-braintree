@@ -211,5 +211,6 @@ final class AuthorizedPayment: PKPayment {
 let suite = XCTestSuite(name: "Apple Pay")
 suite.addTest(XCTestSuite(forTestCaseClass: ApplePayPaymentDetailsTests.self))
 suite.addTest(XCTestSuite(forTestCaseClass: ApplePayValidationTests.self))
+suite.addTest(XCTestSuite(forTestCaseClass: ApplePayRequestOptionsTests.self))
 suite.run()
 exit(suite.testRun?.hasSucceeded == true ? 0 : 1)

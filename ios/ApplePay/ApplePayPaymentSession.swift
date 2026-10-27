@@ -86,7 +86,7 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
         applePayClient.tokenize(payment) { cardNonce, error in
             DispatchQueue.main.async {
                 if let cardNonce = cardNonce {
-                    self.settle(with: prepareBTApplePayNonceResult(cardNonce: cardNonce, payment: payment).toSwiftDict())
+                    self.settle(with: prepareBTApplePayNonceResult(cardNonce: cardNonce, payment: payment, shippingMethodAmounts: self.requestOptions.shippingMethodAmounts).toSwiftDict())
                     completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
                 } else {
                     self.lastTokenizationError = error?.localizedDescription ?? "Braintree returned neither a nonce nor an error"

@@ -326,12 +326,13 @@ export type BTApplePayShippingType =
 
 export type BTApplePaySummaryItem = {
   label: string;
-  /** Decimal amount in "X.YY" format */
+  /** Decimal string without grouping or exponents; negative line items represent discounts */
   amount: string;
   type?: BTApplePaySummaryItemType;
 };
 
 export type BTApplePayShippingMethod = BTApplePaySummaryItem & {
+  /** Must be unique within shippingMethods; shipping amounts must be non-negative */
   identifier: string;
   detail?: string;
 };
@@ -363,7 +364,7 @@ export type RequestApplePayOptions = {
   clientToken: string;
   /**
    * Line items shown on the Apple Pay sheet. Apple expects the last item to be
-   * the grand total, labelled with your company name.
+   * the positive grand total, labelled with your company name.
    */
   paymentSummaryItems: BTApplePaySummaryItem[];
   /** Defaults to the merchant ID configured for Apple Pay in the Braintree gateway */
@@ -374,7 +375,7 @@ export type RequestApplePayOptions = {
   currencyCode?: string;
   /** Defaults to the card networks enabled in the Braintree gateway */
   supportedNetworks?: BTApplePaySupportedNetwork[];
-  /** Defaults to ['3ds'] */
+  /** Defaults to ['3ds']; '3ds' is always included with other capabilities */
   merchantCapabilities?: BTApplePayMerchantCapability[];
   requiredBillingContactFields?: BTApplePayContactField[];
   requiredShippingContactFields?: BTApplePayContactField[];
@@ -388,7 +389,7 @@ export type RequestApplePayOptions = {
   billingContact?: BTApplePayContact;
   shippingContact?: BTApplePayContact;
   shippingType?: BTApplePayShippingType;
-  /** Base64 or plain string, hashed into the payment token by Apple */
+  /** UTF-8 text whose bytes are hashed into the payment token by Apple; never base64-decoded */
   applicationData?: string;
 };
 
@@ -409,14 +410,14 @@ export type BTApplePayNonceResult = {
   type: string;
   isDefault: boolean;
   isDeviceToken: boolean;
-  /** Card network reported by Wallet, e.g. "Visa" or "MasterCard" */
+  /** Known networks use supportedNetworks names, e.g. 'visa' or 'masterCard'; omitted when unavailable */
   cardNetwork?: string;
   binData?: BTApplePayBinDataResult;
   /** Billing contact from the authorized payment, when provided by Wallet */
   billingContact?: BTApplePayContact;
   /** Shipping contact from the authorized payment, when provided by Wallet */
   shippingContact?: BTApplePayContact;
-  /** Shipping method selected in Wallet */
+  /** Shipping method selected in Wallet, preserving the configured amount string */
   shippingMethod?: BTApplePayShippingMethod;
 };
 
