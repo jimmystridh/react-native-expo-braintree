@@ -101,7 +101,16 @@ export const addApplePayMerchantId = <T extends Record<string, unknown>>(
   entitlements: T,
   merchantIdentifier: ApplePayMerchantIdentifiers
 ): T => {
-  const identifiers = normalizeApplePayMerchantIdentifiers(merchantIdentifier);
+  return mergeApplePayMerchantIdentifiers(
+    entitlements,
+    normalizeApplePayMerchantIdentifiers(merchantIdentifier)
+  );
+};
+
+const mergeApplePayMerchantIdentifiers = <T extends Record<string, unknown>>(
+  entitlements: T,
+  identifiers: string[]
+): T => {
   if (identifiers.length === 0) {
     return entitlements;
   }
@@ -133,7 +142,10 @@ export const withApplePayMerchantId: ConfigPlugin<
   }
 
   return withEntitlementsPlist(expoConfig, (config) => {
-    config.modResults = addApplePayMerchantId(config.modResults, identifiers);
+    config.modResults = mergeApplePayMerchantIdentifiers(
+      config.modResults,
+      identifiers
+    );
     return config;
   });
 };
