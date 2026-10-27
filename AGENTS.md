@@ -12,8 +12,12 @@ Follow the React Native ESLint config plus Prettier rules: two-space indentation
 ## Testing Guidelines
 Write Jest specs beside the code under `src/__tests__`, using the `.test.tsx` suffix. Mock native modules selectively; integration specifics should be exercised in the `example` or `expo-examples` apps instead. When fixing bugs, add regression tests first. Ensure the suite passes with `yarn test` and include type coverage via `yarn typecheck` before opening a PR.
 
+For native Apple Pay changes, also run `yarn test:ios` on macOS with Xcode. Run the full relevant suites before committing, alongside lint and typechecking. Run `yarn prepare` after those checks finish because it regenerates bindings that the other checks read. Distinguish automated checks, simulator checks, and physical-device checkout testing when reporting validation.
+
 ## Commit & Pull Request Guidelines
 Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`) enforced by commitlint through Lefthook. Stage focused changes and allow the hooks to run (`npx eslint` + `npx tsc`). PRs should summarize intent, link related issues, and note relevant SDK versions or platform impacts. Add screenshots or reproduction steps for user-facing changes and call out any manual QA done in the `example` app.
+
+Keep the entire commit subject at most 50 characters, use the imperative mood, and omit a trailing period. Wrap body lines at 72 characters; small changes need only a subject. Verify these limits explicitly because passing commitlint does not enforce them. Keep each commit to one logical concern and describe features as `feat`, rather than `fix`, when preparing release notes for unshipped functionality. Never commit or push without explicit authorization; history rewrites require authorization too.
 
 ## Automation & Release Notes
 Lefthook runs on `pre-commit` and `commit-msg`; rerun `yarn install` if hooks misbehave. Releases are handled via `yarn release`, which triggers `release-it` to draft changelogs and npm packages—coordinate with maintainers before publishing.
