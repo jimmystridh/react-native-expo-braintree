@@ -211,6 +211,8 @@ A missing client token, invalid options, a missing merchant ID or supported netw
 
 See [INTEGRATION_4.X_EXPO.md](INTEGRATION_4.X_EXPO.md#apple-pay) or [INTEGRATION_4.X_REACT_NATIVE_CLI.md](INTEGRATION_4.X_REACT_NATIVE_CLI.md#5-apple-pay-optional) for the required merchant ID setup.
 
+The iOS pod bundles Braintree's Apple Pay integration alongside its other payment integrations. PassKit is linked as an iOS system framework. Merchant entitlements are configured separately for apps that use Apple Pay; the SDK dependency alone does not add them.
+
 Apple Pay is disabled in the bundled demo apps until you set their `applePayMerchantIdentifier` constant to a real merchant ID and configure the matching entitlement. Expo demos also need that ID in the config plugin options before prebuild; the bare demo needs the Apple Pay capability enabled in Xcode. No placeholder merchant entitlement is enabled by default, so ordinary device builds do not require Apple Pay provisioning.
 
 ---
