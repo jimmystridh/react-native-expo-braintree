@@ -12,16 +12,9 @@ import {
   type ApplePayMerchantIdentifiers,
 } from './withExpoBraintree.ios';
 
-const path = require('path');
+import { readPackageMetadata } from './packageMetadata';
 
-// Self-resolution fails when the plugin runs from a local checkout or a symlinked install
-const pkg = (() => {
-  try {
-    return require('react-native-expo-braintree/package.json');
-  } catch {
-    return require(path.join(__dirname, '..', '..', '..', 'package.json'));
-  }
-})();
+const pkg = readPackageMetadata(__dirname);
 
 export type ExpoBraintreePluginProps = {
   /**

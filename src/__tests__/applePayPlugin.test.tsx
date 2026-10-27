@@ -5,12 +5,6 @@ import {
   type ApplePayMerchantIdentifiers,
 } from '../plugin/withExpoBraintree.ios';
 
-jest.mock(
-  'react-native-expo-braintree/package.json',
-  () => require('../../package.json'),
-  { virtual: true }
-);
-
 const {
   withExpoBraintreePlugin,
 }: typeof import('../plugin/withExpoBraintree') = require('../plugin/withExpoBraintree.ts');
