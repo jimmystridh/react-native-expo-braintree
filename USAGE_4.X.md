@@ -188,6 +188,8 @@ A missing client token, invalid `paymentSummaryItems`, or a missing merchant ID 
 
 See [INTEGRATION_4.X_EXPO.md](INTEGRATION_4.X_EXPO.md#apple-pay) or [INTEGRATION_4.X_REACT_NATIVE_CLI.md](INTEGRATION_4.X_REACT_NATIVE_CLI.md#5-apple-pay-optional) for the required merchant ID setup.
 
+Apple Pay is disabled in the bundled demo apps until you set their `applePayMerchantIdentifier` constant to a real merchant ID and configure the matching entitlement. Expo demos also need that ID in the config plugin options before prebuild; the bare demo needs the Apple Pay capability enabled in Xcode. No placeholder merchant entitlement is enabled by default, so ordinary device builds do not require Apple Pay provisioning.
+
 ---
 
 ## Error Handling

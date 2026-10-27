@@ -29,7 +29,7 @@ import { LogView, type LogState } from './LogView';
 
 const merchantAppLink = 'https://braintree-example-app.web.app';
 const clientToken = 'sandbox_krwbdqfy_b3fgzq5txkj3j5s6';
-const applePayMerchantIdentifier = 'merchant.com.example';
+const applePayMerchantIdentifier = '';
 
 const T3DS_SCENARIOS = [
   { label: '✅ 3DS Success (No Challenge)', number: '4000000000002701' },
@@ -371,12 +371,16 @@ export default function App() {
             <View style={[styles.section]}>
               <Text style={styles.sectionTitle}>6. Apple Pay</Text>
               <Text style={styles.label}>
-                The simulator can exercise the payment sheet. For end-to-end
-                testing, use a real device with a card in Wallet and Apple Pay
-                enabled for this merchant ID in the Braintree gateway.
+                Apple Pay is disabled until you configure a real merchant ID and
+                its signing entitlement. The simulator can exercise the sheet;
+                use a physical device for the complete Braintree flow.
               </Text>
               <TouchableOpacity
-                style={styles.buttonApplePay}
+                style={[
+                  styles.buttonApplePay,
+                  !applePayMerchantIdentifier && { opacity: 0.4 },
+                ]}
+                disabled={!applePayMerchantIdentifier}
                 onPress={() =>
                   exec(setLogAP, 'ApplePay', () =>
                     requestApplePayPayment({

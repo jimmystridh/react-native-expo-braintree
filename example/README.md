@@ -62,6 +62,10 @@ If everything is set up correctly, you should see your new app running in the An
 
 This is one way to run your app — you can also build it directly from Android Studio or Xcode.
 
+### Enable the Apple Pay demo
+
+Apple Pay is disabled by default so the example can be signed without an Apple Pay provisioning profile. To enable it, configure a real merchant ID in Braintree, add the **Apple Pay** capability with that ID to the example target in Xcode, and set `applePayMerchantIdentifier` in `src/App.tsx` to the same ID. Rebuild after enabling the capability. See the [iOS Apple Pay integration steps](../INTEGRATION_4.X_REACT_NATIVE_CLI.md#5-apple-pay-optional).
+
 ## Step 3: Modify your app
 
 Now that you have successfully run the app, let's make changes!

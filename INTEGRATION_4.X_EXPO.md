@@ -59,4 +59,8 @@ If `initializeVenmo` is set to `"true"`, the plugin automatically modifies `AppD
 4. Run `npx expo prebuild` and rebuild the iOS app so Xcode picks up the new entitlement.
 5. Use the iOS Simulator to exercise the sheet and delegate callbacks with simulated cards. Test the complete Braintree tokenization flow on an Apple Pay-capable physical device with an Apple Pay sandbox test card. See the [Apple Pay testing notes](USAGE_4.X.md#apple-pay-ios-only).
 
+The bundled Expo demos leave Apple Pay unconfigured so their default device builds do not require an Apple Pay provisioning profile. To enable the demo button, set its `applePayMerchantIdentifier` constant and add the same real merchant ID to the plugin options before prebuilding.
+
+If you previously prebuilt a demo with the placeholder merchant ID, remove that ID from its generated entitlements before signing a device build.
+
 [withExpoBraintree.android.ts](src/plugin/withExpoBraintree.android.ts)

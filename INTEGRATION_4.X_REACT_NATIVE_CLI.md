@@ -232,6 +232,8 @@ func application(
 
 Apple Pay does not need any `AppDelegate` or URL scheme changes.
 
+The bare example's Apple Pay button is disabled by default. Enable the Apple Pay capability and select your real merchant ID in Xcode, then set `applePayMerchantIdentifier` in `example/src/App.tsx` to that same ID. The capability creates the entitlement required for a device build; the unconfigured example does not request Apple Pay provisioning.
+
 ---
 
 # Example Projects
