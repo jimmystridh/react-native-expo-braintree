@@ -15,6 +15,34 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.ios.outputs.run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check native test inputs
+        id: ios
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          else
+            changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" -- ios/ tests/ios/ '*.podspec' src/ExpoBraintree.nitro.ts .github/workflows/ci.yml)
+            if [ -n "$changed" ]; then
+              echo 'run=true' >> "$GITHUB_OUTPUT"
+            else
+              echo 'run=false' >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -43,6 +71,8 @@ jobs:
         run: yarn test --maxWorkers=2 --coverage
 
   test-ios:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
     runs-on: macos-latest
     steps:
       - name: Checkout
