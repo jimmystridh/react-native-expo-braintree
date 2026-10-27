@@ -170,12 +170,15 @@ import XCTest
         }
     }
 
-    func testCardNetworkNamesMatchTheSupportedNetworkInputs() {
-        for name in ["amex", "cartesBancaires", "chinaUnionPay", "discover", "eftpos", "electron", "elo", "idCredit", "interac", "jcb", "mada", "maestro", "masterCard", "privateLabel", "quicPay", "suica", "visa"] {
-            XCTAssertEqual(applePayNetworkName(applePayNetwork(named: name)), name)
+    func testCardNetworkNamesMatchExistingCardTokenization() {
+        for (input, output) in [
+            ("visa", "Visa"), ("masterCard", "MasterCard"), ("amex", "Amex"),
+            ("jcb", "JCB"), ("maestro", "Maestro"), ("discover", "Discover"),
+            ("chinaUnionPay", "UnionPay"), ("girocard", PKPaymentNetwork.girocard.rawValue),
+        ] {
+            XCTAssertEqual(applePayNetworkName(applePayNetwork(named: input)), output)
         }
-        XCTAssertEqual(applePayNetworkName(.amex), "amex")
-        XCTAssertEqual(applePayNetworkName(.masterCard), "masterCard")
+        XCTAssertNil(applePayNetwork(named: "not-a-network"))
         XCTAssertNil(applePayNetworkName(nil))
         XCTAssertNil(applePayNetworkName(PKPaymentNetwork(rawValue: "")))
     }

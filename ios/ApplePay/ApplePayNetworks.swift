@@ -35,7 +35,11 @@ func applePayNetwork(named name: String) -> PKPaymentNetwork? {
 
 func applePayNetworkName(_ network: PKPaymentNetwork?) -> String? {
     guard let network = network else { return nil }
-    if let name = applePayNetworks.first(where: { $0.value == network })?.key {
+    let cardNetworkNames: [PKPaymentNetwork: String] = [
+        .visa: "Visa", .masterCard: "MasterCard", .amex: "Amex", .JCB: "JCB",
+        .maestro: "Maestro", .discover: "Discover", .chinaUnionPay: "UnionPay",
+    ]
+    if let name = cardNetworkNames[network] {
         return name
     }
     let rawValue = network.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)

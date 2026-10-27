@@ -417,7 +417,7 @@ export type BTApplePayNonceResult = {
   isDeviceToken: boolean;
   /** Final amount displayed on the authorized sheet, including the selected shipping cost */
   authorizedTotal?: { amount: string; currencyCode: string };
-  /** Known networks use supportedNetworks names, e.g. 'visa' or 'masterCard'; omitted when unavailable */
+  /** Uses card tokenization names, e.g. 'Visa' or 'MasterCard'; omitted when unavailable */
   cardNetwork?: string;
   binData?: BTApplePayBinDataResult;
   /** Billing contact from the authorized payment, when provided by Wallet */

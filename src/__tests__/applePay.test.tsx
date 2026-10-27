@@ -60,7 +60,7 @@ describe('requestApplePayPayment', () => {
       type: 'ApplePayCard',
       isDefault: 'false',
       isDeviceToken: 'true',
-      cardNetwork: 'visa',
+      cardNetwork: 'Visa',
       binData: '{"prepaid":"No","debit":"Yes"}',
     });
 
@@ -69,7 +69,7 @@ describe('requestApplePayPayment', () => {
       type: 'ApplePayCard',
       isDefault: false,
       isDeviceToken: true,
-      cardNetwork: 'visa',
+      cardNetwork: 'Visa',
       binData: { prepaid: 'No', debit: 'Yes' },
     });
   });
