@@ -150,15 +150,30 @@ describe('requestApplePayPayment', () => {
     await expect(requestApplePayPayment(options)).resolves.toEqual(result);
   });
 
-  it('does not call native code on Android', async () => {
+  it.each(['web', 'windows', 'macos'] as const)(
+    'returns a platform-neutral error on %s',
+    async (platform) => {
+      jest.replaceProperty(Platform, 'OS', platform);
+      await expect(requestApplePayPayment(options)).resolves.toMatchObject({
+        error: 'true',
+        code: EXCEPTION_TYPES.UNSUPPORTED_PLATFORM_EXCEPTION,
+        message: APPLE_PAY_ERROR_TYPES.APPLE_PAY_NOT_AVAILABLE_ERROR,
+        nativeError: 'Apple Pay is only supported on iOS.',
+      });
+      expect(mockRequestApplePayPayment).not.toHaveBeenCalled();
+    }
+  );
+
+  it('uses the Android native unsupported stub', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
-
-    const result = await requestApplePayPayment(options);
-
-    expect(mockRequestApplePayPayment).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
+    const result = {
       error: 'true',
+      code: EXCEPTION_TYPES.KOTLIN_EXCEPTION,
       message: APPLE_PAY_ERROR_TYPES.APPLE_PAY_NOT_AVAILABLE_ERROR,
-    });
+      nativeError: 'Apple Pay is only supported on iOS.',
+    };
+    mockRequestApplePayPayment.mockResolvedValue(result);
+    await expect(requestApplePayPayment(options)).resolves.toEqual(result);
+    expect(mockRequestApplePayPayment).toHaveBeenCalledTimes(1);
   });
 });

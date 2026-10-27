@@ -1,4 +1,5 @@
 export enum EXCEPTION_TYPES {
+  UNSUPPORTED_PLATFORM_EXCEPTION = 'ExpoBraintree:`UnsupportedPlatformException',
   KOTLIN_EXCEPTION = 'ExpoBraintree:`KotlinException',
   SWIFT_EXCEPTION = 'ExpoBraintree:`SwiftException',
   USER_CANCEL_EXCEPTION = 'ExpoBraintree:`UserCancelException',
