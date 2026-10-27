@@ -113,6 +113,7 @@ describe('requestApplePayPayment', () => {
       billingContact,
       shippingContact,
       shippingMethod,
+      authorizedTotal: { amount: '17.25', currencyCode: 'USD' },
     };
     mockRequestApplePayPayment.mockResolvedValue({
       ...expected,
@@ -121,6 +122,7 @@ describe('requestApplePayPayment', () => {
       billingContact: JSON.stringify(billingContact),
       shippingContact: JSON.stringify(shippingContact),
       shippingMethod: JSON.stringify(shippingMethod),
+      authorizedTotal: JSON.stringify(expected.authorizedTotal),
     });
 
     await expect(requestApplePayPayment(options)).resolves.toEqual(expected);

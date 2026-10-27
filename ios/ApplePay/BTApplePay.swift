@@ -2,7 +2,13 @@ import Braintree
 import Foundation
 import PassKit
 
-func prepareBTApplePayNonceResult(cardNonce: BTApplePayCardNonce, payment: PKPayment, shippingMethodAmounts: [String: String]) -> NSDictionary {
+func prepareBTApplePayNonceResult(
+    cardNonce: BTApplePayCardNonce,
+    payment: PKPayment,
+    shippingMethodAmounts: [String: String],
+    authorizedTotal: PKPaymentSummaryItem?,
+    currencyCode: String?
+) -> NSDictionary {
     let result = NSMutableDictionary()
     result["nonce"] = cardNonce.nonce
     result["type"] = cardNonce.type
@@ -11,7 +17,10 @@ func prepareBTApplePayNonceResult(cardNonce: BTApplePayCardNonce, payment: PKPay
     if let network = applePayNetworkName(payment.token.paymentMethod.network) {
         result["cardNetwork"] = network
     }
-    result.addEntries(from: prepareApplePayPaymentDetails(payment, shippingMethodAmounts: shippingMethodAmounts))
+    result.addEntries(from: prepareApplePayPaymentDetails(
+        payment, shippingMethodAmounts: shippingMethodAmounts,
+        authorizedTotal: authorizedTotal, currencyCode: currencyCode
+    ))
 
     let binData = NSMutableDictionary()
     binData["prepaid"] = cardNonce.binData.prepaid

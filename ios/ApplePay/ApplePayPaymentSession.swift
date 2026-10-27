@@ -9,6 +9,8 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
     private let resultHandler: ApplePayResultHandler
     private var controller: PKPaymentAuthorizationController?
     private var lastTokenizationError: String?
+    private var summaryItems: [PKPaymentSummaryItem]
+    private var currencyCode: String?
 
     init(
         clientToken: String,
@@ -18,6 +20,7 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
     ) {
         self.applePayClient = BTApplePayClient(authorization: clientToken)
         self.requestOptions = requestOptions
+        self.summaryItems = requestOptions.paymentSummaryItems
         self.resultHandler = ApplePayResultHandler(onFinish: onFinish) { result in
             promise.resolve(withResult: result)
         }
@@ -39,6 +42,7 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
             finish(with: error)
             return
         }
+        currencyCode = paymentRequest.currencyCode
         let controller = PKPaymentAuthorizationController(paymentRequest: paymentRequest)
         controller.delegate = self
         self.controller = controller
@@ -60,12 +64,19 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
         didSelectShippingMethod shippingMethod: PKShippingMethod,
         handler completion: @escaping (PKPaymentRequestShippingMethodUpdate) -> Void
     ) {
-        let summaryItems = prepareApplePaySummaryItems(
-            summaryItems: requestOptions.paymentSummaryItems,
-            defaultShippingMethod: requestOptions.shippingMethods.first,
-            selectedShippingMethod: shippingMethod
-        )
-        completion(PKPaymentRequestShippingMethodUpdate(paymentSummaryItems: summaryItems))
+        do {
+            summaryItems = try prepareApplePaySummaryItems(
+                summaryItems: requestOptions.paymentSummaryItems,
+                defaultShippingMethod: requestOptions.shippingMethods.first,
+                selectedShippingMethod: shippingMethod,
+                shippingSummaryItemIndex: requestOptions.shippingSummaryItemIndex
+            )
+            completion(PKPaymentRequestShippingMethodUpdate(paymentSummaryItems: summaryItems))
+        } catch {
+            let update = PKPaymentRequestShippingMethodUpdate(paymentSummaryItems: summaryItems)
+            update.status = .failure
+            completion(update)
+        }
     }
 
     func paymentAuthorizationController(
@@ -73,13 +84,16 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
         didAuthorizePayment payment: PKPayment,
         handler completion: @escaping (PKPaymentAuthorizationResult) -> Void
     ) {
+        let authorizedTotal = summaryItems.last
         applePayClient.tokenize(payment) { cardNonce, error in
             if let cardNonce = cardNonce {
                 self.lastTokenizationError = nil
                 self.resultHandler.recordSuccess(prepareBTApplePayNonceResult(
                     cardNonce: cardNonce,
                     payment: payment,
-                    shippingMethodAmounts: self.requestOptions.shippingMethodAmounts
+                    shippingMethodAmounts: self.requestOptions.shippingMethodAmounts,
+                    authorizedTotal: authorizedTotal,
+                    currencyCode: self.currencyCode
                 ).toSwiftDict())
                 completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
             } else {

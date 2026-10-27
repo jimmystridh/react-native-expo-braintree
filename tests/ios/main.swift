@@ -20,7 +20,7 @@ final class AuthorizedPayment: PKPayment {
         return method
     }
 
-    func testShippingSelectionUpdatesTotalWithoutAccumulatingCharges() {
+    func testShippingSelectionUpdatesTotalWithoutAccumulatingCharges() throws {
         let standard = shippingMethod("Standard", amount: "2.10")
         let express = shippingMethod("Express", amount: "7.25")
         let free = shippingMethod("Pickup", amount: "0.00")
@@ -30,7 +30,7 @@ final class AuthorizedPayment: PKPayment {
         ]
 
         for (method, expectedTotal) in [(express, "17.25"), (express, "17.25"), (free, "10.00"), (standard, "12.10")] {
-            let updated = prepareApplePaySummaryItems(
+            let updated = try prepareApplePaySummaryItems(
                 summaryItems: items, defaultShippingMethod: standard, selectedShippingMethod: method
             )
             XCTAssertEqual(updated.last?.amount, NSDecimalNumber(string: expectedTotal))
@@ -40,7 +40,7 @@ final class AuthorizedPayment: PKPayment {
         XCTAssertEqual(items.last?.amount, NSDecimalNumber(string: "12.10"))
     }
 
-    func testShippingSelectionReplacesItemizedShippingAndPreservesOtherItems() {
+    func testShippingSelectionReplacesItemizedShippingAndPreservesOtherItems() throws {
         let standard = shippingMethod("Standard", amount: "2.10")
         let express = shippingMethod("Express", amount: "7.25")
         let items = [
@@ -49,7 +49,7 @@ final class AuthorizedPayment: PKPayment {
             PKPaymentSummaryItem(label: "Discount", amount: NSDecimalNumber(string: "-1.00")),
             PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "11.10")),
         ]
-        let updated = prepareApplePaySummaryItems(
+        let updated = try prepareApplePaySummaryItems(
             summaryItems: items, defaultShippingMethod: standard, selectedShippingMethod: express
         )
 
@@ -61,20 +61,58 @@ final class AuthorizedPayment: PKPayment {
         XCTAssertEqual(items[1].amount, standard.amount)
     }
 
-    func testShippingSelectionSupportsTotalOnlyAndNoConfiguredMethods() {
+    func testShippingSelectionSupportsTotalOnlyAndNoConfiguredMethods() throws {
         let total = PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "12.10"))
         let standard = shippingMethod("Standard", amount: "2.10")
         let express = shippingMethod("Express", amount: "7.25")
-        let updated = prepareApplePaySummaryItems(
+        let updated = try prepareApplePaySummaryItems(
             summaryItems: [total], defaultShippingMethod: standard, selectedShippingMethod: express
         )
         XCTAssertEqual(updated.count, 1)
         XCTAssertEqual(updated[0].amount, NSDecimalNumber(string: "17.25"))
 
-        let unchanged = prepareApplePaySummaryItems(
+        let unchanged = try prepareApplePaySummaryItems(
             summaryItems: [total], defaultShippingMethod: nil, selectedShippingMethod: express
         )
         XCTAssertEqual(unchanged[0].amount, total.amount)
+    }
+
+    func testShippingSelectionsCannotProduceANonpositiveTotal() {
+        let standard = shippingMethod("Standard", amount: "10.00")
+        let free = shippingMethod("Free", amount: "0.00")
+        for amount in ["4.00", "10.00"] {
+            let items = [PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: amount))]
+            XCTAssertThrowsError(try prepareApplePaySummaryItems(
+                summaryItems: items, defaultShippingMethod: standard, selectedShippingMethod: free
+            ))
+        }
+    }
+
+    func testExplicitShippingLineKeepsItsLabelWhenTheMethodHasAnotherName() throws {
+        let standard = shippingMethod("Standard", amount: "2.10")
+        let express = shippingMethod("Express", amount: "7.25")
+        let items = [
+            PKPaymentSummaryItem(label: "Shipping", amount: standard.amount),
+            PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "12.10")),
+        ]
+        let updated = try prepareApplePaySummaryItems(
+            summaryItems: items, defaultShippingMethod: standard, selectedShippingMethod: express,
+            shippingSummaryItemIndex: 0
+        )
+        XCTAssertEqual(updated[0].label, "Shipping")
+        XCTAssertEqual(updated[0].amount, express.amount)
+        XCTAssertEqual(updated[1].amount, NSDecimalNumber(string: "17.25"))
+    }
+
+    func testAuthorizedTotalUsesTheFinalShippingSelectionAndCurrency() throws {
+        let standard = shippingMethod("Standard", amount: "2.10")
+        let express = shippingMethod("Express", amount: "7.25")
+        let items = try prepareApplePaySummaryItems(
+            summaryItems: [PKPaymentSummaryItem(label: "Merchant", amount: NSDecimalNumber(string: "12.10"))],
+            defaultShippingMethod: standard, selectedShippingMethod: express
+        )
+        let details = prepareApplePayPaymentDetails(AuthorizedPayment(), authorizedTotal: items.last, currencyCode: "USD")
+        XCTAssertEqual(details["authorizedTotal"] as? [String: String], ["amount": "17.25", "currencyCode": "USD"])
     }
 
     func testAuthorizedPaymentDetailsSerializeAllContactFields() throws {

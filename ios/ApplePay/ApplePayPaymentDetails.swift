@@ -5,29 +5,45 @@ import PassKit
 func prepareApplePaySummaryItems(
     summaryItems: [PKPaymentSummaryItem],
     defaultShippingMethod: PKShippingMethod?,
-    selectedShippingMethod: PKShippingMethod
-) -> [PKPaymentSummaryItem] {
+    selectedShippingMethod: PKShippingMethod,
+    shippingSummaryItemIndex: Int? = nil
+) throws -> [PKPaymentSummaryItem] {
     guard let total = summaryItems.last, let defaultShippingMethod = defaultShippingMethod else {
         return summaryItems
     }
 
     var updatedItems = Array(summaryItems.dropLast())
-    if let shippingIndex = updatedItems.lastIndex(where: {
+    let shippingIndex = shippingSummaryItemIndex ?? updatedItems.lastIndex(where: {
         $0.label == defaultShippingMethod.label && $0.amount == defaultShippingMethod.amount
-    }) {
+    })
+    if let shippingIndex = shippingIndex {
+        guard updatedItems.indices.contains(shippingIndex) else {
+            throw ApplePayConfigurationError.invalidValue(field: "shippingSummaryItemIndex", expected: "must identify a line item before the total")
+        }
         updatedItems[shippingIndex] = PKPaymentSummaryItem(
-            label: selectedShippingMethod.label,
+            label: shippingSummaryItemIndex == nil ? selectedShippingMethod.label : updatedItems[shippingIndex].label,
             amount: selectedShippingMethod.amount,
             type: selectedShippingMethod.type
         )
     }
     let updatedTotal = total.amount.subtracting(defaultShippingMethod.amount).adding(selectedShippingMethod.amount)
+    guard updatedTotal != .notANumber, updatedTotal.compare(NSDecimalNumber.zero) == .orderedDescending else {
+        throw ApplePayConfigurationError.invalidValue(field: "paymentSummaryItems", expected: "must have a positive total after a shipping change")
+    }
     updatedItems.append(PKPaymentSummaryItem(label: total.label, amount: updatedTotal, type: total.type))
     return updatedItems
 }
 
-func prepareApplePayPaymentDetails(_ payment: PKPayment, shippingMethodAmounts: [String: String] = [:]) -> [String: Any] {
+func prepareApplePayPaymentDetails(
+    _ payment: PKPayment,
+    shippingMethodAmounts: [String: String] = [:],
+    authorizedTotal: PKPaymentSummaryItem? = nil,
+    currencyCode: String? = nil
+) -> [String: Any] {
     var result: [String: Any] = [:]
+    if let total = authorizedTotal, let currencyCode = currencyCode {
+        result["authorizedTotal"] = ["amount": total.amount.stringValue, "currencyCode": currencyCode]
+    }
     if let billingContact = payment.billingContact {
         result["billingContact"] = prepareApplePayContact(billingContact)
     }

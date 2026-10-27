@@ -197,6 +197,7 @@ export const requestApplePayPayment = async (
       'billingContact',
       'shippingContact',
       'shippingMethod',
+      'authorizedTotal',
     ]);
   } catch (ex: unknown) {
     return catchError(ex) as BTApplePayError;

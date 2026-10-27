@@ -387,6 +387,8 @@ export type RequestApplePayOptions = {
    * method's label and amount to be updated as well.
    */
   shippingMethods?: BTApplePayShippingMethod[];
+  /** Index of the shipping summary line before the total; its amount must match the first method */
+  shippingSummaryItemIndex?: number;
   billingContact?: BTApplePayContact;
   shippingContact?: BTApplePayContact;
   shippingType?: BTApplePayShippingType;
@@ -411,6 +413,8 @@ export type BTApplePayNonceResult = {
   type: string;
   isDefault: boolean;
   isDeviceToken: boolean;
+  /** Final amount displayed on the authorized sheet, including the selected shipping cost */
+  authorizedTotal?: { amount: string; currencyCode: string };
   /** Known networks use supportedNetworks names, e.g. 'visa' or 'masterCard'; omitted when unavailable */
   cardNetwork?: string;
   binData?: BTApplePayBinDataResult;

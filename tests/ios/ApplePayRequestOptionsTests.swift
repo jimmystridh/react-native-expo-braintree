@@ -95,6 +95,33 @@ import XCTest
         }
     }
 
+    func testShippingOptionsThatCanInvalidateTheTotalAreRejectedBeforePresentation() {
+        XCTAssertThrowsError(try request([
+            "shippingMethods": "[{\"identifier\":\"standard\",\"label\":\"Standard\",\"amount\":\"4.00\"},{\"identifier\":\"free\",\"label\":\"Pickup\",\"amount\":\"0.00\"}]",
+        ])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("shippingMethods[1]"))
+        }
+    }
+
+    func testShippingSummaryIndexMustIdentifyTheInitialShippingAmount() throws {
+        let base = [
+            "paymentSummaryItems": "[{\"label\":\"Shipping\",\"amount\":\"2.10\"},{\"label\":\"Merchant\",\"amount\":\"12.10\"}]",
+            "shippingMethods": "[{\"identifier\":\"standard\",\"label\":\"Standard\",\"amount\":\"2.10\"}]",
+        ]
+        for index in ["-1", "1", "2", "0.5", "null"] {
+            var options = base
+            options["shippingSummaryItemIndex"] = index
+            XCTAssertThrowsError(try request(options), index)
+        }
+        var valid = base
+        valid["shippingSummaryItemIndex"] = "0"
+        XCTAssertEqual(try request(valid).shippingSummaryItemIndex, 0)
+        valid["shippingMethods"] = "[]"
+        XCTAssertThrowsError(try request(valid))
+        valid["shippingMethods"] = "[{\"identifier\":\"standard\",\"label\":\"Standard\",\"amount\":\"1.00\"}]"
+        XCTAssertThrowsError(try request(valid))
+    }
+
     func testDuplicateShippingIdentifiersAreRejected() {
         let methods = "[{\"identifier\":\"same\",\"label\":\"First\",\"amount\":\"1.00\"},{\"identifier\":\"same\",\"label\":\"Second\",\"amount\":\"7.50\"}]"
         XCTAssertThrowsError(try request(["shippingMethods": methods]))
