@@ -91,7 +91,7 @@ Remember to add tests for your change if possible. Run the unit tests by:
 yarn test
 ```
 
-On macOS with Xcode installed, run the native Apple Pay shipping-total, contact-serialization, and request-validation tests with:
+On macOS with Xcode installed, run the native Apple Pay request parsing, shipping totals, contact serialization, and session completion tests with:
 
 ```sh
 yarn test:ios

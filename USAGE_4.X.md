@@ -170,6 +170,8 @@ if ('nonce' in result) {
 ```
 Implementation inside [requestApplePayPayment](src/index.tsx).
 
+The promise resolves after the sheet is dismissed and the native session is released, so you can start another checkout directly from the result. Sheet success means Braintree tokenization succeeded; it does not mean your server has authorized, charged, or settled the payment. Send the nonce to your server and show the server's payment result in your app. Server declines cannot be displayed on the dismissed Apple Pay sheet with this API.
+
 `applicationData` is always encoded as UTF-8. Strings such as `order123`, `test`, and `SGVsbG8=` are used literally, never base64-decoded. When verifying Apple's application-data hash on your server, hash the UTF-8 bytes of the same string.
 
 Amounts must be decimal strings without grouping separators, exponents, whitespace, or trailing characters. Discount line items may be negative; the grand total must be positive and shipping prices must be non-negative. Malformed JSON, invalid list elements, and invalid shipping methods return `APPLE_PAY_CONFIGURATION_ERROR` with the field or item index instead of silently changing the request. The `3ds` capability is always retained when other merchant capabilities are supplied.
