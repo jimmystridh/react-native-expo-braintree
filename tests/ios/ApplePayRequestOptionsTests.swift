@@ -24,6 +24,46 @@ import XCTest
         XCTAssertTrue(try request(["merchantCapabilities": "[\"debit\"]"]).merchantCapabilities.contains(.debit))
     }
 
+    func testUnknownOptionValuesAreRejectedWithTheirField() {
+        for (field, value, position) in [
+            ("merchantCapabilities", "[\"debitCard\"]", "merchantCapabilities[0]"),
+            ("requiredBillingContactFields", "[\"emailAddress\"]", "requiredBillingContactFields[0]"),
+            ("requiredShippingContactFields", "[\"phoneNumber\"]", "requiredShippingContactFields[0]"),
+            ("supportedNetworks", "[\"not-a-network\"]", "supportedNetworks[0]"),
+            ("shippingType", "teleport", "shippingType"),
+        ] {
+            XCTAssertThrowsError(try request([field: value])) { error in
+                XCTAssertTrue(error.localizedDescription.contains(position))
+            }
+        }
+    }
+
+    func testKnownContactFieldsCapabilitiesAndShippingTypesAreAccepted() throws {
+        let options = try request([
+            "merchantCapabilities": "[\"3ds\",\"credit\",\"debit\",\"emv\"]",
+            "requiredShippingContactFields": "[\"email\",\"name\",\"phone\",\"postalAddress\",\"phoneticName\"]",
+            "shippingType": "storePickup",
+            "supportedNetworks": "[\"girocard\"]",
+        ])
+        XCTAssertEqual(options.requiredShippingContactFields, [.emailAddress, .name, .phoneNumber, .postalAddress, .phoneticName])
+        XCTAssertTrue(options.merchantCapabilities.contains([.threeDSecure, .credit, .debit, .emv]))
+        XCTAssertEqual(options.shippingType, .storePickup)
+        XCTAssertEqual(options.supportedNetworks, [.girocard])
+    }
+
+    func testInvalidExplicitCountryAndCurrencyCodesAreRejected() {
+        for (field, codes) in [
+            ("countryCode", ["", " ", "USA", "us", "ZZ", "U1"]),
+            ("currencyCode", ["", " ", "US", "usd", "ZZZ", "U1D"]),
+        ] {
+            for code in codes {
+                XCTAssertThrowsError(try request([field: code]), code) { error in
+                    XCTAssertTrue(error.localizedDescription.contains(field))
+                }
+            }
+        }
+    }
+
     func testMalformedAndNonpositiveTotalsAreRejected() {
         for amount in ["1,299.00", "4.00abc", "-3.00", "0", "0.00", "+4.00", "1e2", "NaN", "Infinity", " 4.00", "4.00\n", ".50", "4.", "12345678901234567890123456789012345678901234567890123456789.00"] {
             let items: [[String: Any]] = [["label": "Merchant", "amount": amount]]

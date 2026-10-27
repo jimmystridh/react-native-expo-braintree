@@ -8,6 +8,7 @@ enum ApplePayConfigurationError: LocalizedError {
     case invalidArrayElement(field: String, index: Int)
     case invalidSummaryItem(index: Int)
     case invalidShippingMethod(index: Int)
+    case invalidValue(field: String, expected: String)
 
     var errorDescription: String? {
         switch self {
@@ -21,6 +22,8 @@ enum ApplePayConfigurationError: LocalizedError {
             return "paymentSummaryItems[\(index)] needs a non-empty label and a strict decimal amount string; the grand total must be positive"
         case let .invalidShippingMethod(index):
             return "shippingMethods[\(index)] needs a unique non-empty identifier, a non-empty label, and a non-negative strict decimal amount string"
+        case let .invalidValue(field, expected):
+            return "\(field) \(expected)"
         }
     }
 }
@@ -81,18 +84,18 @@ func prepareApplePayRequestOptions(options: [String: String]) throws -> ApplePay
     let shipping = try mapShippingMethods(from: decodeArray(options["shippingMethods"], field: "shippingMethods"))
     return ApplePayRequestOptions(
         merchantIdentifier: nonEmpty(options["merchantIdentifier"]),
-        countryCode: nonEmpty(options["countryCode"]),
-        currencyCode: nonEmpty(options["currencyCode"]),
+        countryCode: try validatedApplePayRegionCode(options["countryCode"], field: "countryCode"),
+        currencyCode: try validatedApplePayRegionCode(options["currencyCode"], field: "currencyCode"),
         supportedNetworks: try mapSupportedNetworks(from: decodeStrings(options["supportedNetworks"], field: "supportedNetworks")),
         paymentSummaryItems: try mapSummaryItems(from: decodeArray(options["paymentSummaryItems"], field: "paymentSummaryItems")),
-        merchantCapabilities: mapMerchantCapabilities(from: try decodeStrings(options["merchantCapabilities"], field: "merchantCapabilities")),
-        requiredBillingContactFields: mapContactFields(from: try decodeStrings(options["requiredBillingContactFields"], field: "requiredBillingContactFields")),
-        requiredShippingContactFields: mapContactFields(from: try decodeStrings(options["requiredShippingContactFields"], field: "requiredShippingContactFields")),
+        merchantCapabilities: try mapMerchantCapabilities(from: decodeStrings(options["merchantCapabilities"], field: "merchantCapabilities")),
+        requiredBillingContactFields: try mapContactFields(from: decodeStrings(options["requiredBillingContactFields"], field: "requiredBillingContactFields"), field: "requiredBillingContactFields"),
+        requiredShippingContactFields: try mapContactFields(from: decodeStrings(options["requiredShippingContactFields"], field: "requiredShippingContactFields"), field: "requiredShippingContactFields"),
         shippingMethods: shipping.methods,
         shippingMethodAmounts: shipping.amounts,
         billingContact: mapContact(from: try decodeObject(options["billingContact"], field: "billingContact")),
         shippingContact: mapContact(from: try decodeObject(options["shippingContact"], field: "shippingContact")),
-        shippingType: mapShippingType(from: options["shippingType"]),
+        shippingType: try mapShippingType(from: options["shippingType"]),
         applicationData: mapApplicationData(from: options["applicationData"])
     )
 }
@@ -129,15 +132,15 @@ private func decodeObject(_ value: String?, field: String) throws -> [String: An
     return object
 }
 
-private func mapMerchantCapabilities(from values: [String]) -> PKMerchantCapability {
+private func mapMerchantCapabilities(from values: [String]) throws -> PKMerchantCapability {
     var capabilities: PKMerchantCapability = .threeDSecure
-    for value in values {
+    for (index, value) in values.enumerated() {
         switch value.lowercased() {
         case "3ds": capabilities.insert(.threeDSecure)
         case "credit": capabilities.insert(.credit)
         case "debit": capabilities.insert(.debit)
         case "emv": capabilities.insert(.emv)
-        default: continue
+        default: throw ApplePayConfigurationError.invalidArrayElement(field: "merchantCapabilities", index: index)
         }
     }
     return capabilities
@@ -147,23 +150,23 @@ private func mapSupportedNetworks(from values: [String]) throws -> [PKPaymentNet
     var seen = Set<PKPaymentNetwork>()
     return try values.enumerated().map { index, value in
         let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalized.isEmpty else {
+        guard let network = applePayNetwork(named: normalized) else {
             throw ApplePayConfigurationError.invalidArrayElement(field: "supportedNetworks", index: index)
         }
-        return applePayNetwork(named: normalized)
+        return network
     }.filter { seen.insert($0).inserted }
 }
 
-private func mapContactFields(from values: [String]) -> Set<PKContactField> {
+private func mapContactFields(from values: [String], field: String) throws -> Set<PKContactField> {
     var result = Set<PKContactField>()
-    for value in values {
+    for (index, value) in values.enumerated() {
         switch value.lowercased() {
         case "email": result.insert(.emailAddress)
         case "name": result.insert(.name)
         case "phone": result.insert(.phoneNumber)
         case "postaladdress", "postal_address": result.insert(.postalAddress)
         case "phoneticname", "phonetic_name": result.insert(.phoneticName)
-        default: continue
+        default: throw ApplePayConfigurationError.invalidArrayElement(field: field, index: index)
         }
     }
     return result
@@ -243,13 +246,14 @@ private func mapShippingMethods(from items: [Any]) throws -> (methods: [PKShippi
     return (methods, amounts)
 }
 
-private func mapShippingType(from value: String?) -> PKShippingType? {
-    switch value?.lowercased() {
+private func mapShippingType(from value: String?) throws -> PKShippingType? {
+    guard let value = value else { return nil }
+    switch value.lowercased() {
     case "shipping": return .shipping
     case "delivery": return .delivery
     case "storepickup", "store_pickup": return .storePickup
     case "servicepickup", "service_pickup": return .servicePickup
-    default: return nil
+    default: throw ApplePayConfigurationError.invalidValue(field: "shippingType", expected: "must be shipping, delivery, storePickup, or servicePickup")
     }
 }
 

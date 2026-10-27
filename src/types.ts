@@ -298,6 +298,7 @@ export type BTApplePaySupportedNetwork =
   | 'eftpos'
   | 'electron'
   | 'elo'
+  | 'girocard'
   | 'idCredit'
   | 'interac'
   | 'jcb'

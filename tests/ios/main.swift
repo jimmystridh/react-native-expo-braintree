@@ -150,6 +150,8 @@ final class AuthorizedPayment: PKPayment {
         request.merchantIdentifier = "merchant.com.example"
         request.supportedNetworks = [.visa, .masterCard]
         request.merchantCapabilities = [.threeDSecure, .debit]
+        request.countryCode = "US"
+        request.currencyCode = "USD"
         return request
     }
 
@@ -180,6 +182,27 @@ final class AuthorizedPayment: PKPayment {
 
         XCTAssertEqual(error?["message"], ERROR_TYPES.APPLE_PAY_CONFIGURATION_ERROR.rawValue)
         XCTAssertFalse(didCheckWallet)
+    }
+
+    func testInvalidGatewayRegionCodesAreRejectedBeforeCheckingWallet() {
+        for (field, codes) in [
+            ("countryCode", ["", "USA", "us", "ZZ"]),
+            ("currencyCode", ["", "US", "usd", "ZZZ"]),
+        ] {
+            for code in codes {
+                let request = paymentRequest()
+                if field == "countryCode" { request.countryCode = code }
+                else { request.currencyCode = code }
+                var checkedWallet = false
+                let error = applePayPaymentRequestError(request) { _, _ in
+                    checkedWallet = true
+                    return true
+                }
+                XCTAssertEqual(error?["message"], ERROR_TYPES.APPLE_PAY_CONFIGURATION_ERROR.rawValue)
+                XCTAssertTrue(error?["nativeError"]?.contains(field) == true)
+                XCTAssertFalse(checkedWallet)
+            }
+        }
     }
 
     func testWalletCheckIncludesNetworksAndMerchantCapabilities() {

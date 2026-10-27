@@ -9,6 +9,7 @@ private let applePayNetworks: [String: PKPaymentNetwork] = [
     "eftpos": .eftpos,
     "electron": .electron,
     "elo": .elo,
+    "girocard": .girocard,
     "idCredit": .idCredit,
     "interac": .interac,
     "jcb": .JCB,
@@ -21,7 +22,7 @@ private let applePayNetworks: [String: PKPaymentNetwork] = [
     "visa": .visa,
 ]
 
-func applePayNetwork(named name: String) -> PKPaymentNetwork {
+func applePayNetwork(named name: String) -> PKPaymentNetwork? {
     let aliases = [
         "master_card": "masterCard", "americanexpress": "amex",
         "china_union_pay": "chinaUnionPay", "private_label": "privateLabel",
@@ -29,7 +30,7 @@ func applePayNetwork(named name: String) -> PKPaymentNetwork {
     let canonicalName = aliases[name.lowercased()] ?? name
     return applePayNetworks.first {
         $0.key.caseInsensitiveCompare(canonicalName) == .orderedSame
-    }?.value ?? PKPaymentNetwork(rawValue: name)
+    }?.value
 }
 
 func applePayNetworkName(_ network: PKPaymentNetwork?) -> String? {
