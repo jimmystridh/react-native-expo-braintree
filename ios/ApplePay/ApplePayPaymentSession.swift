@@ -28,8 +28,7 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
     func start() {
         applePayClient.makePaymentRequest { paymentRequest, error in
             guard let paymentRequest = paymentRequest else {
-                let category: ERROR_TYPES = (error as? BTApplePayError) == .unsupported ? .APPLE_PAY_CONFIGURATION_ERROR : .APPLE_PAY_REQUEST_ERROR
-                self.finish(with: applePayErrorResult(category, nativeError: error?.localizedDescription ?? "Braintree could not create an Apple Pay payment request"))
+                self.finish(with: applePayGatewayFailure(error))
                 return
             }
             self.requestOptions.apply(to: paymentRequest)
@@ -84,7 +83,10 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
         didAuthorizePayment payment: PKPayment,
         handler completion: @escaping (PKPaymentAuthorizationResult) -> Void
     ) {
-        resultHandler.beginTokenization()
+        guard resultHandler.beginTokenization() else {
+            completion(applePayAuthorizationFailure())
+            return
+        }
         let authorizedTotal = summaryItems.last
         applePayClient.tokenize(payment) { cardNonce, error in
             guard self.resultHandler.isActive else { return }
@@ -100,21 +102,21 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
                     completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
                 } catch {
                     self.resultHandler.recordFailure(error.localizedDescription)
-                    completion(PKPaymentAuthorizationResult(status: .failure, errors: nil))
+                    completion(applePayAuthorizationFailure())
                 }
             } else {
-                self.resultHandler.recordFailure(error?.localizedDescription ?? "Braintree returned neither a nonce nor an error")
-                completion(PKPaymentAuthorizationResult(status: .failure, errors: error.map { [$0] }))
+                self.resultHandler.recordFailure(applePayTokenizationFailure(error))
+                completion(applePayAuthorizationFailure())
             }
         }
     }
 
     func paymentAuthorizationControllerDidFinish(_ controller: PKPaymentAuthorizationController) {
-        resultHandler.beginDismissal()
-        controller.dismiss {
-            self.controller?.delegate = nil
-            self.controller = nil
-            self.resultHandler.finishAfterDismissal()
-        }
+        resultHandler.dismiss(request: { completion in
+            controller.dismiss(completion: completion)
+        }, cleanup: { [weak self] in
+            self?.controller?.delegate = nil
+            self?.controller = nil
+        })
     }
 }

@@ -54,6 +54,7 @@ import XCTest
     func testDismissalWithoutAuthorizationIsStillCancellation() {
         var result: [String: String] = [:]
         let handler = ApplePayResultHandler(onFinish: {}, resolve: { result = $0 })
+        handler.beginDismissal()
         handler.finishAfterDismissal()
         XCTAssertEqual(result["message"], ERROR_TYPES.APPLE_PAY_USER_CANCELLATION_ERROR.rawValue)
     }
@@ -65,8 +66,35 @@ import XCTest
         handler.recordFailure("First card failed")
         handler.beginTokenization()
         handler.recordSuccess(["nonce": "retry"])
+        handler.beginDismissal()
         handler.finishAfterDismissal()
         XCTAssertEqual(result, ["nonce": "retry"])
+    }
+
+    func testLostDismissalCompletionStillSettlesAndReleasesTheSession() {
+        var fallback: (() -> Void)?
+        var completions: [[String: String]] = []
+        var events: [String] = []
+        let handler = ApplePayResultHandler(onFinish: { events.append("release") }, resolve: { completions.append($0); events.append("resolve") })
+        handler.recordSuccess(["nonce": "authorized"])
+        handler.dismiss(request: { _ in }, cleanup: { events.append("cleanup") }, scheduleFallback: { fallback = $0 })
+        XCTAssertTrue(completions.isEmpty)
+        fallback?()
+        fallback?()
+        XCTAssertEqual(completions, [["nonce": "authorized"]])
+        XCTAssertEqual(events, ["cleanup", "release", "resolve"])
+    }
+
+    func testCompletionAndTimeoutCannotFinishTheSessionTwice() {
+        var callback: (() -> Void)?
+        var fallback: (() -> Void)?
+        var count = 0
+        let handler = ApplePayResultHandler(onFinish: {}, resolve: { _ in count += 1 })
+        handler.dismiss(request: { callback = $0 }, cleanup: {}, scheduleFallback: { fallback = $0 })
+        callback?()
+        fallback?()
+        callback?()
+        XCTAssertEqual(count, 1)
     }
 
     func testTheFirstAuthorizedResultIsRetained() {

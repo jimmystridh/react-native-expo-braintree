@@ -105,6 +105,13 @@ final class AuthorizedPayment: PKPayment {
         ])
     }
 
+    func testAuthorizationFailuresUseThePassKitErrorDomain() {
+        let result = applePayAuthorizationFailure()
+        XCTAssertEqual(result.status, .failure)
+        XCTAssertEqual((result.errors?.first as NSError?)?.domain, PKPaymentErrorDomain)
+        XCTAssertEqual((result.errors?.first as NSError?)?.code, PKPaymentError.Code.unknownError.rawValue)
+    }
+
     func testAbsentDetailsAreOmittedAndPendingShippingAmountRemainsAString() throws {
         let payment = AuthorizedPayment()
         XCTAssertTrue(try prepareApplePayPaymentDetails(payment).isEmpty)
@@ -215,5 +222,6 @@ suite.addTest(XCTestSuite(forTestCaseClass: ApplePayValidationTests.self))
 suite.addTest(XCTestSuite(forTestCaseClass: ApplePayRequestOptionsTests.self))
 suite.addTest(XCTestSuite(forTestCaseClass: ApplePayResultHandlerTests.self))
 suite.addTest(XCTestSuite(forTestCaseClass: ApplePayAmountsTests.self))
+suite.addTest(XCTestSuite(forTestCaseClass: ApplePayGatewayFailureTests.self))
 suite.run()
 exit(suite.testRun?.hasSucceeded == true ? 0 : 1)

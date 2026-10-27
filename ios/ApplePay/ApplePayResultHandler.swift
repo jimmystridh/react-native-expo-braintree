@@ -1,15 +1,25 @@
 import Foundation
 
 final class ApplePayResultHandler {
+    private enum State {
+        case ready
+        case tokenizing
+        case failed([String: String])
+        case authorized([String: String])
+        case dismissing([String: String])
+        case finished
+    }
+
     private let onFinish: () -> Void
     private let resolve: ([String: String]) -> Void
-    private var success: [String: String]?
-    private var isFinished = false
-    private var isTokenizing = false
-    private var tokenizationError: String?
-    private var isDismissing = false
+    private var state: State = .ready
 
-    var isActive: Bool { !isFinished && !isDismissing }
+    var isActive: Bool {
+        switch state {
+        case .dismissing, .finished: return false
+        default: return true
+        }
+    }
 
     init(onFinish: @escaping () -> Void, resolve: @escaping ([String: String]) -> Void) {
         self.onFinish = onFinish
@@ -17,42 +27,75 @@ final class ApplePayResultHandler {
     }
 
     func recordSuccess(_ result: [String: String]) {
-        guard isActive, success == nil else { return }
-        success = result
-        isTokenizing = false
-        tokenizationError = nil
-    }
-
-    func beginTokenization() {
-        guard isActive else { return }
-        isTokenizing = true
-        tokenizationError = nil
-    }
-
-    func recordFailure(_ message: String) {
-        guard isActive else { return }
-        isTokenizing = false
-        tokenizationError = message
-    }
-
-    func beginDismissal() {
-        isDismissing = true
-    }
-
-    func finishAfterDismissal() {
-        beginDismissal()
-        if isTokenizing || tokenizationError != nil {
-            finish(with: applePayErrorResult(.APPLE_PAY_TOKENIZATION_ERROR, nativeError: tokenizationError ?? "The Apple Pay sheet closed before tokenization completed"))
-        } else {
-            finish(with: applePayErrorResult(.APPLE_PAY_USER_CANCELLATION_ERROR, code: .USER_CANCEL_EXCEPTION, nativeError: "User closed the Apple Pay sheet"))
+        switch state {
+        case .ready, .tokenizing, .failed: state = .authorized(result)
+        default: return
         }
     }
 
+    @discardableResult func beginTokenization() -> Bool {
+        switch state {
+        case .ready, .failed: state = .tokenizing; return true
+        default: return false
+        }
+    }
+
+    func recordFailure(_ message: String) {
+        recordFailure(applePayErrorResult(.APPLE_PAY_TOKENIZATION_ERROR, nativeError: message))
+    }
+
+    func recordFailure(_ result: [String: String]) {
+        switch state {
+        case .ready, .tokenizing, .failed: state = .failed(result)
+        default: return
+        }
+    }
+
+    @discardableResult func beginDismissal() -> Bool {
+        let result: [String: String]
+        switch state {
+        case .authorized(let success): result = success
+        case .tokenizing:
+            result = applePayErrorResult(.APPLE_PAY_TOKENIZATION_ERROR, nativeError: "The Apple Pay sheet closed before tokenization completed")
+        case .failed(let failure): result = failure
+        case .ready:
+            result = applePayErrorResult(.APPLE_PAY_USER_CANCELLATION_ERROR, code: .USER_CANCEL_EXCEPTION, nativeError: "User closed the Apple Pay sheet")
+        case .dismissing, .finished: return false
+        }
+        state = .dismissing(result)
+        return true
+    }
+
+    func dismiss(
+        request: (@escaping () -> Void) -> Void,
+        cleanup: @escaping () -> Void,
+        scheduleFallback: (@escaping () -> Void) -> Void = { completion in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: completion)
+        }
+    ) {
+        guard beginDismissal() else { return }
+        let complete = { [weak self] in
+            guard let self = self, case .dismissing = self.state else { return }
+            cleanup()
+            self.finishAfterDismissal()
+        }
+        scheduleFallback(complete)
+        request(complete)
+    }
+
+    func finishAfterDismissal() {
+        guard case .dismissing(let result) = state else { return }
+        finish(with: result)
+    }
+
     func finish(with fallback: [String: String]) {
-        guard !isFinished else { return }
-        isFinished = true
-        let result = success ?? fallback
-        success = nil
+        let result: [String: String]
+        switch state {
+        case .finished: return
+        case .authorized(let success), .dismissing(let success): result = success
+        default: result = fallback
+        }
+        state = .finished
         onFinish()
         resolve(result)
     }

@@ -15,5 +15,6 @@ xcrun swiftc -target "$apple_pay_test_target" -F "$apple_pay_test_frameworks" -I
   ios/ApplePay/ApplePayRequestOptions.swift ios/ApplePay/ApplePayNetworks.swift tests/ios/ApplePayRequestOptionsTests.swift \
   ios/ApplePay/ApplePayResultHandler.swift tests/ios/ApplePayResultHandlerTests.swift \
   ios/ApplePay/ApplePayAmounts.swift tests/ios/ApplePayAmountsTests.swift \
+  ios/ApplePay/ApplePayGatewayFailure.swift tests/ios/ApplePayGatewayFailureTests.swift \
   tests/ios/main.swift -o "$apple_pay_test_dir/ApplePayTests"
 "$apple_pay_test_dir/ApplePayTests"
