@@ -141,6 +141,15 @@ describe('requestApplePayPayment', () => {
     await expect(requestApplePayPayment(options)).resolves.toEqual(nativeError);
   });
 
+  it.each([
+    APPLE_PAY_ERROR_TYPES.APPLE_PAY_REQUEST_ERROR,
+    APPLE_PAY_ERROR_TYPES.APPLE_PAY_IN_PROGRESS_ERROR,
+  ])('keeps retryable native failures distinct: %s', async (message) => {
+    const result = { error: 'true', message, domain: message };
+    mockRequestApplePayPayment.mockResolvedValue(result);
+    await expect(requestApplePayPayment(options)).resolves.toEqual(result);
+  });
+
   it('does not call native code on Android', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
 

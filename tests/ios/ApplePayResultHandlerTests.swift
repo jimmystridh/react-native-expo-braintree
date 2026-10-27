@@ -37,6 +37,38 @@ import XCTest
         XCTAssertEqual(results, [["error": "cancelled"]])
     }
 
+    func testDismissalDuringTokenizationReportsAnInterruptedAttempt() {
+        var results: [[String: String]] = []
+        let handler = ApplePayResultHandler(onFinish: {}, resolve: { results.append($0) })
+        handler.beginTokenization()
+        handler.beginDismissal()
+        XCTAssertFalse(handler.isActive)
+        handler.recordSuccess(["nonce": "during-dismissal"])
+        handler.finishAfterDismissal()
+        handler.recordSuccess(["nonce": "too-late"])
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0]["message"], ERROR_TYPES.APPLE_PAY_TOKENIZATION_ERROR.rawValue)
+        XCTAssertNotEqual(results[0]["code"], EXCEPTION_TYPES.USER_CANCEL_EXCEPTION.rawValue)
+    }
+
+    func testDismissalWithoutAuthorizationIsStillCancellation() {
+        var result: [String: String] = [:]
+        let handler = ApplePayResultHandler(onFinish: {}, resolve: { result = $0 })
+        handler.finishAfterDismissal()
+        XCTAssertEqual(result["message"], ERROR_TYPES.APPLE_PAY_USER_CANCELLATION_ERROR.rawValue)
+    }
+
+    func testATokenizationRetryCanSucceedBeforeDismissal() {
+        var result: [String: String] = [:]
+        let handler = ApplePayResultHandler(onFinish: {}, resolve: { result = $0 })
+        handler.beginTokenization()
+        handler.recordFailure("First card failed")
+        handler.beginTokenization()
+        handler.recordSuccess(["nonce": "retry"])
+        handler.finishAfterDismissal()
+        XCTAssertEqual(result, ["nonce": "retry"])
+    }
+
     func testTheFirstAuthorizedResultIsRetained() {
         var results: [[String: String]] = []
         let handler = ApplePayResultHandler(onFinish: {}, resolve: { results.append($0) })

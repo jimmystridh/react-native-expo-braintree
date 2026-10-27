@@ -8,7 +8,6 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
     private let requestOptions: ApplePayRequestOptions
     private let resultHandler: ApplePayResultHandler
     private var controller: PKPaymentAuthorizationController?
-    private var lastTokenizationError: String?
     private var summaryItems: [PKPaymentSummaryItem]
     private var currencyCode: String?
 
@@ -29,7 +28,8 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
     func start() {
         applePayClient.makePaymentRequest { paymentRequest, error in
             guard let paymentRequest = paymentRequest else {
-                self.finish(with: applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: error?.localizedDescription ?? "Braintree could not create an Apple Pay payment request"))
+                let category: ERROR_TYPES = (error as? BTApplePayError) == .unsupported ? .APPLE_PAY_CONFIGURATION_ERROR : .APPLE_PAY_REQUEST_ERROR
+                self.finish(with: applePayErrorResult(category, nativeError: error?.localizedDescription ?? "Braintree could not create an Apple Pay payment request"))
                 return
             }
             self.requestOptions.apply(to: paymentRequest)
@@ -84,10 +84,11 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
         didAuthorizePayment payment: PKPayment,
         handler completion: @escaping (PKPaymentAuthorizationResult) -> Void
     ) {
+        resultHandler.beginTokenization()
         let authorizedTotal = summaryItems.last
         applePayClient.tokenize(payment) { cardNonce, error in
+            guard self.resultHandler.isActive else { return }
             if let cardNonce = cardNonce {
-                self.lastTokenizationError = nil
                 self.resultHandler.recordSuccess(prepareBTApplePayNonceResult(
                     cardNonce: cardNonce,
                     payment: payment,
@@ -97,19 +98,18 @@ final class ApplePayPaymentSession: NSObject, PKPaymentAuthorizationControllerDe
                 ).toSwiftDict())
                 completion(PKPaymentAuthorizationResult(status: .success, errors: nil))
             } else {
-                self.lastTokenizationError = error?.localizedDescription ?? "Braintree returned neither a nonce nor an error"
+                self.resultHandler.recordFailure(error?.localizedDescription ?? "Braintree returned neither a nonce nor an error")
                 completion(PKPaymentAuthorizationResult(status: .failure, errors: error.map { [$0] }))
             }
         }
     }
 
     func paymentAuthorizationControllerDidFinish(_ controller: PKPaymentAuthorizationController) {
+        resultHandler.beginDismissal()
         controller.dismiss {
-            if let tokenizationError = self.lastTokenizationError {
-                self.finish(with: applePayErrorResult(.APPLE_PAY_TOKENIZATION_ERROR, nativeError: tokenizationError))
-            } else {
-                self.finish(with: applePayErrorResult(.APPLE_PAY_USER_CANCELLATION_ERROR, code: .USER_CANCEL_EXCEPTION, nativeError: "User closed the Apple Pay sheet"))
-            }
+            self.controller?.delegate = nil
+            self.controller = nil
+            self.resultHandler.finishAfterDismissal()
         }
     }
 }

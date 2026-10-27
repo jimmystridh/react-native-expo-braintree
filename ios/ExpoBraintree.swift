@@ -155,7 +155,7 @@ class ExpoBraintree: HybridExpoBraintreeSpec {
         let promise = Promise<Dictionary<String, String>>()
         DispatchQueue.main.async { [self] in
             guard self.applePaySession == nil else {
-                promise.resolve(withResult: applePayErrorResult(.APPLE_PAY_CONFIGURATION_ERROR, nativeError: "Another Apple Pay request is already in progress"))
+                promise.resolve(withResult: applePayErrorResult(.APPLE_PAY_IN_PROGRESS_ERROR, nativeError: "Another Apple Pay request is already in progress"))
                 return
             }
             let session = ApplePayPaymentSession(
